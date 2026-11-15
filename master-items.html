@@ -15,6 +15,17 @@
     .grimoire-mobile { display:flex; }
     .grimoire-logo { width:8rem; }
     @media (min-width:768px) { .grimoire-mobile { display:none; } }
+    .catalog-scroll { overflow:auto; border:1px solid #dfcfb0; border-radius:1rem; }
+    .catalog-grid { width:100%; min-width:42rem; }
+    .catalog-grid th { background:#efe4d0; text-transform:uppercase; letter-spacing:.12em; }
+    .catalog-grid tbody tr:nth-child(even) { background:#efe4d04d; }
+    .catalog-grid :is(th, td) { padding:.65rem .85rem; vertical-align:top; }
+    .catalog-grid summary { cursor:pointer; font-weight:600; }
+    .catalog-grid td:last-child { white-space:nowrap; }
+    .item-facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(12rem,1fr)); gap:.75rem; margin-top:1rem; }
+    .item-facts dt { font-weight:600; }
+    .item-facts dd { margin:0; overflow-wrap:anywhere; white-space:pre-wrap; }
+    #item-details { margin:auto; width:min(92vw,58rem); max-height:85vh; overflow:auto; }
   </style>
 </head>
 <body class="app-shell antialiased">
@@ -80,8 +91,14 @@
           <button id="close-editor" type="button" class="btn btn-ghost">Cancel</button>
         </form>
       </dialog>
-      <div style="overflow:auto">
-        <table class="table mt-4">
+      <dialog id="item-details" class="surface-panel p-6" aria-labelledby="item-details-title">
+        <form method="dialog"><button class="btn btn-ghost">Close</button></form>
+        <h2 id="item-details-title" class="text-2xl mt-2"></h2>
+        <p id="item-details-status" role="status"></p>
+        <dl id="item-facts" class="item-facts"></dl>
+      </dialog>
+      <div class="catalog-scroll mt-4">
+        <table class="table catalog-grid">
           <thead><tr><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Form</th><th scope="col">Inventory</th><th scope="col">Actions</th></tr></thead>
           <tbody id="catalog"></tbody>
         </table>
@@ -104,6 +121,32 @@ let revision = 0;
 const element = (tag, value) => { const item = document.createElement(tag); item.textContent = value; return item; };
 
 const pageSize = 50;
+let detailRequest = 0;
+
+async function viewItem(item) {
+  const request = ++detailRequest;
+  const dialog = by("item-details");
+  by("item-details-title").textContent = item.name;
+  by("item-details-status").textContent = "Loading item details…";
+  by("item-facts").replaceChildren();
+  dialog.showModal();
+  const { data, error } = await db.from("master_items").select("*").eq("id", item.id).single();
+  if (request !== detailRequest || !dialog.open) return;
+  if (error) { by("item-details-status").textContent = "Could not load item details."; return; }
+  const { id, name, metadata, ...values } = data;
+  const fields = Object.entries({ ...values, ...metadata }).filter(([, value]) => value != null && value !== "");
+  const labels = {sap_naoh:"SAP (NaOH)", sap_koh:"SAP (KOH)", density_g_per_ml:"Density (g/mL)", iodine_value:"Iodine value"};
+  for (const [key, value] of fields) {
+    const label = labels[key] ?? key.replace(/^fa_/, "fatty acid ").replaceAll("_", " ");
+    const display = typeof value === "boolean" ? (value ? "Yes" : "No")
+      : Array.isArray(value) && value.every(entry => typeof entry !== "object") ? value.join(", ")
+      : typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
+    const group = document.createElement("div");
+    group.append(element("dt", label.charAt(0).toUpperCase() + label.slice(1)), element("dd", display));
+    by("item-facts").append(group);
+  }
+  by("item-details-status").textContent = fields.length ? "" : "No catalog values recorded.";
+}
 let items = [];
 let owned = new Set();
 let page = 0;
@@ -227,7 +270,7 @@ function render() {
     const view = element("button", "View");
     view.type = "button";
     view.className = "btn btn-ghost";
-    view.onclick = () => { details.open = !details.open; };
+    view.onclick = () => viewItem(item);
     const add = element("button", "Inventory");
     add.type = "button";
     add.className = "btn btn-ghost";
@@ -283,7 +326,7 @@ async function catalog() {
 function show(session) {
   admin = session?.user.app_metadata?.catalog_admin === true;
   by("catalog-admin").hidden = !admin;
-  if (!session) { selected.clear(); by("editor").close(); }
+  if (!session) { selected.clear(); by("editor").close(); by("item-details").close(); }
   by("login").hidden = Boolean(session);
   by("workspace").hidden = !session;
   if (session) { tell(""); void catalog(); }

@@ -64,6 +64,22 @@
         <button id="clear" type="button" class="btn btn-ghost">Lift Filters</button>
         <button id="refresh" type="button" class="btn btn-ghost">Refresh</button>
       </div>
+      <div id="catalog-admin" class="flex flex-wrap gap-3 mt-4" hidden>
+        <button id="new-item" type="button" class="btn btn-primary">Add to the Catalog</button>
+        <button id="bulk-edit" type="button" class="btn btn-ghost">Bulk Edit Selected</button>
+      </div>
+      <dialog id="editor" class="surface-panel p-6" style="margin:auto;max-width:min(92vw,34rem)">
+        <form id="edit-form" class="space-y-4">
+          <h2 id="edit-title" class="text-2xl">Catalog item</h2>
+          <label id="name-field">Name <input name="name" class="input input-bordered" maxlength="255"></label>
+          <label>Class <input name="item_class" class="input input-bordered" maxlength="50"></label>
+          <label>Category <input name="category" class="input input-bordered" maxlength="50"></label>
+          <label>Form <input name="form" class="input input-bordered" maxlength="50"></label>
+          <p id="edit-status" role="status"></p>
+          <button class="btn btn-primary">Save</button>
+          <button id="close-editor" type="button" class="btn btn-ghost">Cancel</button>
+        </form>
+      </dialog>
       <div style="overflow:auto">
         <table class="table mt-4">
           <thead><tr><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Form</th><th scope="col">Inventory</th><th scope="col">Actions</th></tr></thead>
@@ -91,6 +107,61 @@ const pageSize = 50;
 let items = [];
 let owned = new Set();
 let page = 0;
+let admin = false;
+let editIds = [];
+const selected = new Set();
+
+function edit(ids = []) {
+  if (!admin) return;
+  const form = by("edit-form");
+  const item = ids.length === 1 ? items.find(row => row.id === ids[0]) : null;
+  editIds = ids;
+  form.reset();
+  const bulk = ids.length > 1;
+  by("edit-title").textContent = bulk ? "Edit " + ids.length + " selected items" : item ? "Edit catalog item" : "Add to the Catalog";
+  by("name-field").hidden = bulk;
+  form.elements.name.required = !bulk;
+  for (const name of ["name", "item_class", "category", "form"]) form.elements[name].value = item?.[name] ?? "";
+  by("edit-status").textContent = bulk ? "Blank fields leave existing values in place." : "";
+  by("editor").showModal();
+}
+
+by("new-item").onclick = () => edit();
+by("bulk-edit").onclick = () => {
+  if (selected.size) edit([...selected]);
+  else tell("Select at least one catalog item.");
+};
+by("close-editor").onclick = () => by("editor").close();
+by("edit-form").onsubmit = async event => {
+  event.preventDefault();
+  if (!admin) return;
+  const form = event.currentTarget;
+  const submit = form.querySelector("button");
+  const bulk = editIds.length > 1;
+  const values = {};
+  for (const [field, raw] of new FormData(form)) {
+    const value = raw.trim();
+    if (bulk && (field === "name" || !value)) continue;
+    values[field] = value || (field === "item_class" ? "Other" : null);
+  }
+  if ((!bulk && !values.name) || !Object.keys(values).length) {
+    by("edit-status").textContent = bulk ? "Enter at least one change." : "Enter a name.";
+    return;
+  }
+  submit.disabled = true;
+  const query = editIds.length
+    ? db.from("master_items").update(values).in("id", editIds)
+    : db.from("master_items").insert(values);
+  const { data, error } = await query.select("id");
+  submit.disabled = false;
+  if (error || data?.length !== (editIds.length || 1)) {
+    by("edit-status").textContent = "Could not save the catalog changes. Check access and item names.";
+    return;
+  }
+  by("editor").close();
+  selected.clear();
+  await catalog();
+};
 
 async function readPages(table, fields, order) {
   const rows = [];
@@ -141,6 +212,14 @@ function render() {
     const details = document.createElement("details");
     details.append(element("summary", item.name));
     details.append(element("p", item.item_class + " · " + (item.is_active ? "Active" : "Inactive")));
+    if (admin) {
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = selected.has(item.id);
+      checkbox.setAttribute("aria-label", "Select " + item.name);
+      checkbox.onchange = () => checkbox.checked ? selected.add(item.id) : selected.delete(item.id);
+      name.append(checkbox);
+    }
     name.append(details);
     const inInventory = owned.has(item.id);
     row.append(name, element("td", item.category ?? "—"), element("td", item.form ?? "—"), element("td", inInventory ? "Yes" : "No"));
@@ -166,6 +245,13 @@ function render() {
       tell("Ingredient is in your inventory.");
     };
     actions.append(add, view);
+    if (admin) {
+      const modify = element("button", "Edit");
+      modify.type = "button";
+      modify.className = "btn btn-ghost";
+      modify.onclick = () => edit([item.id]);
+      actions.append(modify);
+    }
     row.append(actions);
     by("catalog").append(row);
   }
@@ -195,6 +281,9 @@ async function catalog() {
 }
 
 function show(session) {
+  admin = session?.user.app_metadata?.catalog_admin === true;
+  by("catalog-admin").hidden = !admin;
+  if (!session) { selected.clear(); by("editor").close(); }
   by("login").hidden = Boolean(session);
   by("workspace").hidden = !session;
   if (session) { tell(""); void catalog(); }

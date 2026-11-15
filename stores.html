@@ -70,6 +70,7 @@
           <th scope="col"><button type="button" data-sort="purchase_total_cost">Purchase cost</button></th>
           <th scope="col"><button type="button" data-sort="purchase_weight_grams">Purchase weight (g)</button></th>
           <th scope="col"><button type="button" data-sort="supplier">Supplier</button></th>
+          <th scope="col"><button type="button" data-sort="manufacturer">Manufacturer</button></th>
           <th scope="col"><button type="button" data-sort="stock_quantity">Stock quantity</button></th>
           <th scope="col"><button type="button" data-sort="stock_unit">Stock unit</button></th>
           <th scope="col">Cost per base unit</th>
@@ -113,12 +114,12 @@ function sortInventory() {
     const a = value(left);
     const b = value(right);
     if (a == null || b == null) return Number(a == null) - Number(b == null);
-    const comparison = ["name", "supplier", "stock_unit"].includes(sortKey) ? a.localeCompare(b) : Number(a) - Number(b);
+    const comparison = ["name", "supplier", "manufacturer", "stock_unit"].includes(sortKey) ? a.localeCompare(b) : Number(a) - Number(b);
     return direction * comparison || left.master_item_id - right.master_item_id;
   });
   for (const { row, item } of inventoryRows) {
     row.hidden = (!item.is_active && !by("show-retired").checked) || !inCategory(item) || (Boolean(form.value) && item.master_items?.form !== form.value) ||
-      ![item.master_items?.name, item.supplier].some(value => (value ?? "").toLowerCase().includes(term));
+      ![item.master_items?.name, item.supplier, item.manufacturer].some(value => (value ?? "").toLowerCase().includes(term));
     if (!row.hidden) visible++;
     by("stock").append(row);
   }
@@ -174,7 +175,7 @@ function displayUnitCost(item, cell, retailCell) {
 async function inventory() {
   const version = ++loadVersion;
   const { data, error } = await db.from("inventory_items")
-    .select("master_item_id,is_active,in_stock,purchase_total_cost,purchase_weight_grams,supplier,stock_quantity,stock_unit,purchase_quantity,purchase_unit,markup_percent,master_items(name,category,form,density_g_per_ml)")
+    .select("master_item_id,is_active,in_stock,purchase_total_cost,purchase_weight_grams,supplier,manufacturer,stock_quantity,stock_unit,purchase_quantity,purchase_unit,markup_percent,master_items(name,category,form,density_g_per_ml)")
     .order("master_item_id");
   if (version !== loadVersion || by("workspace").hidden) return;
   by("stock").replaceChildren();
@@ -205,6 +206,8 @@ async function inventory() {
     const grams = field("Purchase weight (g)", "grams", "number", item.purchase_weight_grams, "0.001");
     const supplier = field("Supplier", "supplier", "text", item.supplier);
     supplier.maxLength = 120;
+    const manufacturer = field("Manufacturer", "manufacturer", "text", item.manufacturer);
+    manufacturer.maxLength = 120;
     const quantity = field("Stock quantity", "quantity", "number", item.stock_quantity, "any");
     const unit = field("Stock unit", "unit", "text", item.stock_unit);
     unit.maxLength = 32;
@@ -242,7 +245,7 @@ async function inventory() {
         purchase_quantity: amount.value || null, purchase_unit: purchaseUnit.value || null,
         markup_percent: markup.value || 0,
         in_stock: stocked.checked, purchase_total_cost: cost.value || null,
-        purchase_weight_grams: grams.value || null, supplier: supplier.value.trim() || null,
+        purchase_weight_grams: grams.value || null, supplier: supplier.value.trim() || null, manufacturer: manufacturer.value.trim() || null,
         stock_quantity: quantity.value || null, stock_unit: unit.value.trim() || null
       };
       save.disabled = true;

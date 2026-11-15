@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en" data-theme="brenda">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Stores | The Hidden Grimoire</title>
+<link rel="stylesheet" href="/static/css/app.css">
+<main class="workspace-frame" style="display:block;max-width:60rem">
+  <a class="btn btn-ghost" href="/">Back to the Grimoire</a>
+  <section class="surface-panel p-6">
+    <h1 class="text-4xl">The Stores</h1>
+    <p id="status" role="status">Connecting…</p>
+    <form id="login" class="space-y-4 mt-4" hidden>
+      <label>Email <input name="email" class="input input-bordered" type="email" autocomplete="username" required></label>
+      <label>Password <input name="password" class="input input-bordered" type="password" autocomplete="current-password" required></label>
+      <button class="btn btn-primary">Sign in</button>
+    </form>
+    <div id="workspace" hidden>
+      <button id="logout" type="button" class="btn btn-ghost">Sign out</button>
+      <h2 class="text-2xl mt-4">Master Items</h2>
+      <label>Find an ingredient <input id="search" type="search" class="input input-bordered"></label>
+      <ul id="catalog" class="space-y-2 mt-4"></ul>
+      <h2 class="text-2xl mt-4">My Inventory</h2>
+      <ul id="stock" class="space-y-4 mt-4"></ul>
+    </div>
+  </section>
+</main>
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm";
+const db = createClient("https://dfuanosyewsimvhdparf.supabase.co", "sb_publishable_biDbT_ZmXynIVLrgukrz5g_ZBTk84T7");
+const by = id => document.getElementById(id);
+const tell = message => { by("status").textContent = message; };
+let revision = 0;
+const element = (tag, value) => { const item = document.createElement(tag); item.textContent = value; return item; };
+
+async function catalog() {
+  const request = ++revision;
+  const term = by("search").value.trim().replace(/[%_\\]/g, "");
+  let query = db.from("master_items").select("id,name,category").eq("is_active", true).order("name").limit(50);
+  if (term) query = query.ilike("name", "%" + term + "%");
+  const { data, error } = await query;
+  if (request !== revision || by("workspace").hidden) return;
+  by("catalog").replaceChildren();
+  if (error) return tell("Could not load Master Items.");
+  if (!data.length) by("catalog").append(element("li", "No matching ingredients."));
+  for (const item of data) {
+    const row = element("li", item.name + (item.category ? " · " + item.category : "") + " ");
+    const add = element("button", "Add to my inventory");
+    add.type = "button";
+    add.className = "btn btn-ghost";
+    add.onclick = async () => {
+      add.disabled = true;
+      const { error } = await db.from("inventory_items").upsert(
+        { master_item_id: item.id }, { onConflict: "owner_id,master_item_id", ignoreDuplicates: true }
+      );
+      add.disabled = false;
+      if (error) return tell("Could not add the ingredient.");
+      tell("Ingredient is in your inventory.");
+      await inventory();
+    };
+    row.append(add);
+    by("catalog").append(row);
+  }
+}
+
+async function inventory() {
+  const { data, error } = await db.from("inventory_items")
+    .select("master_item_id,in_stock,purchase_total_cost,purchase_weight_grams,master_items(name)")
+    .order("master_item_id");
+  if (by("workspace").hidden) return;
+  by("stock").replaceChildren();
+  if (error) return tell("Could not load your inventory.");
+  if (!data.length) by("stock").append(element("li", "Your inventory is empty."));
+  for (const item of data) {
+    const row = element("li", "");
+    const form = document.createElement("form");
+    form.className = "flex flex-wrap items-center gap-3";
+    form.append(element("strong", item.master_items?.name ?? "Ingredient"));
+    function field(label, name, type, value, step) {
+      const caption = element("label", label + " ");
+      const input = document.createElement("input");
+      input.name = name;
+      input.type = type;
+      if (type === "checkbox") input.checked = value;
+      else { input.value = value ?? ""; input.step = step; input.min = name === "grams" ? "0.001" : "0"; }
+      caption.append(input);
+      form.append(caption);
+      return input;
+    }
+    const stocked = field("In stock", "stocked", "checkbox", item.in_stock);
+    const cost = field("Purchase cost", "cost", "number", item.purchase_total_cost, "0.01");
+    const grams = field("Purchase weight (g)", "grams", "number", item.purchase_weight_grams, "0.001");
+    const save = element("button", "Save");
+    save.className = "btn btn-primary";
+    form.append(save);
+    form.onsubmit = async event => {
+      event.preventDefault();
+      save.disabled = true;
+      const { error } = await db.from("inventory_items").update({
+        in_stock: stocked.checked, purchase_total_cost: cost.value || null, purchase_weight_grams: grams.value || null
+      }).eq("master_item_id", item.master_item_id);
+      save.disabled = false;
+      tell(error ? "Could not save the inventory item." : "Inventory item saved.");
+    };
+    row.append(form);
+    by("stock").append(row);
+  }
+}
+
+function show(session) {
+  by("login").hidden = Boolean(session);
+  by("workspace").hidden = !session;
+  if (session) { tell(""); void catalog(); void inventory(); }
+  else { ++revision; by("catalog").replaceChildren(); by("stock").replaceChildren(); tell("Sign in to view the catalog and your inventory."); }
+}
+
+by("login").onsubmit = async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const fields = new FormData(form);
+  const button = form.querySelector("button");
+  button.disabled = true;
+  const { error } = await db.auth.signInWithPassword({ email: fields.get("email"), password: fields.get("password") });
+  button.disabled = false;
+  form.reset();
+  if (error) tell("Sign-in failed. Check your email and password.");
+};
+by("logout").onclick = async () => { const { error } = await db.auth.signOut(); if (error) tell("Could not sign out."); };
+by("search").addEventListener("change", catalog);
+db.auth.onAuthStateChange((event, session) => {
+  if (["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT"].includes(event)) setTimeout(() => show(session), 0);
+});
+</script>
+</html>

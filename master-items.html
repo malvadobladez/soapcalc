@@ -42,6 +42,18 @@
     .entry-grid input, .entry-grid select { width:100%; min-width:0; }
     .entry-grid #name-field { grid-column:1/-1; }
     @media(max-width:540px) { .entry-grid { grid-template-columns:1fr; } }
+      .catalog-heading { display:flex; flex-wrap:wrap; align-items:end; justify-content:space-between; gap:1rem; }
+    .catalog-counts,.catalog-toolbar,.catalog-admin-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.65rem; }
+    .catalog-counts[hidden],.catalog-admin-actions[hidden] { display:none; }
+    .catalog-pill,.catalog-stock { display:inline-flex; align-items:center; gap:.65rem; border:1px solid var(--color-base-300); background:var(--color-base-200); }
+    .catalog-pill { border-radius:999px; padding:.55rem .95rem; white-space:nowrap; }
+    .catalog-pill:last-child { color:var(--color-primary); background:#35584614; }
+    .catalog-toolbar { margin-top:1.35rem; }
+    .catalog-toolbar input[type=search] { flex:2 1 14rem; min-width:0; }
+    .catalog-toolbar select { flex:1 1 9rem; min-width:0; }
+    .catalog-stock { border-radius:1rem; padding:.65rem .85rem; white-space:nowrap; }
+    #status { margin-top:.65rem; color:var(--color-neutral); }
+    @media(max-width:540px) { .catalog-toolbar input[type=search],.catalog-toolbar select { flex-basis:100%; } }
   </style>
 </head>
 <body class="app-shell antialiased">
@@ -72,8 +84,14 @@
         </nav>
   </header>
   <section class="surface-panel p-6">
-    <p class="section-kicker">Master Catalog</p>
-    <h1 class="dashboard-title mt-2">The wider materia catalog.</h1>
+    <div class="catalog-heading">
+      <div>
+        <p class="section-kicker">Master Catalog</p>
+        <h1 class="dashboard-title mt-2">The wider materia catalog.</h1>
+        <p class="mt-2 text-neutral/75">Search the broader catalog, inspect its lore, and pass chosen rows into stock from one working table.</p>
+      </div>
+      <div id="counts" class="catalog-counts" aria-live="polite" hidden></div>
+    </div>
     <p id="status" role="status">Connecting…</p>
     <form id="login" class="space-y-4 mt-4" hidden>
       <label>Email <input name="email" class="input input-bordered" type="email" autocomplete="username" required></label>
@@ -81,21 +99,20 @@
       <button class="btn btn-primary">Sign in</button>
     </form>
     <div id="workspace" hidden>
-      <button id="logout" type="button" class="btn btn-ghost">Sign out</button>
-      <div id="counts" class="flex flex-wrap gap-3 mt-4" aria-live="polite"></div>
-      <div class="flex flex-wrap items-center gap-3 mt-4">
-        <label>Search <input id="search" type="search" class="input input-bordered" placeholder="Search the catalog…"></label>
-        <label>Category <select id="category" class="select select-bordered"></select></label>
-        <label>Form <select id="form" class="select select-bordered"></select></label>
-        <label><input id="stock-only" type="checkbox" class="checkbox checkbox-sm"> In inventory only</label>
-        <button id="clear" type="button" class="btn btn-ghost">Lift Filters</button>
-        <button id="refresh" type="button" class="btn btn-ghost">Refresh</button>
+      <div class="catalog-toolbar">
+        <input id="search" type="search" class="input input-bordered bg-base-100" aria-label="Search the catalog" placeholder="Search the catalog…">
+        <select id="category" class="select select-bordered bg-base-100" aria-label="Category"></select>
+        <select id="form" class="select select-bordered bg-base-100" aria-label="Form"></select>
+        <label class="catalog-stock"><input id="stock-only" type="checkbox" class="checkbox checkbox-sm"> In inventory only</label>
+        <button id="clear" type="button" class="btn btn-ghost rounded-full">Lift Filters</button>
+        <button id="refresh" type="button" class="btn btn-ghost rounded-full">Refresh</button>
+        <div id="catalog-admin" class="catalog-admin-actions" hidden>
+          <button id="bulk-edit" type="button" class="btn btn-secondary rounded-full">Bulk Edit</button>
+          <button id="new-item" type="button" class="btn btn-primary rounded-full">Add to the Catalog</button>
+          <button id="edit-selected" type="button" class="btn btn-primary rounded-full" hidden>Edit selected</button>
+        </div>
       </div>
-      <div id="catalog-admin" class="flex flex-wrap gap-3 mt-4" hidden>
-        <button id="new-item" type="button" class="btn btn-primary">Add to the Catalog</button>
-        <button id="bulk-edit" type="button" class="btn btn-ghost">Bulk Edit</button>
-        <button id="edit-selected" type="button" class="btn btn-primary" hidden>Edit selected</button>
-      </div>
+      <button id="logout" type="button" class="btn btn-ghost btn-sm mt-2">Sign out</button>
       <dialog id="editor" class="surface-panel p-6 entry-dialog" aria-labelledby="edit-title">
         <form id="edit-form" class="space-y-4">
           <h2 id="edit-title" class="text-2xl">Catalog item</h2>
@@ -360,7 +377,7 @@ function render() {
   const category = by("category");
   const form = by("form");
   const term = by("search").value.trim().toLowerCase();
-  choices(category, items.map(item => item.category), "All categories");
+  choices(category, items.map(item => item.category), "All Categories");
   const categoryItems = items.filter(item => !category.value || item.category === category.value);
   choices(form, category.value ? categoryItems.map(item => item.form) : [], category.value ? "All forms" : "Choose category first");
   form.disabled = !category.value;
@@ -391,8 +408,14 @@ function render() {
     ["Active", items.filter(item => item.is_active).length], ["Visible", visible.length]
   ];
   by("counts").replaceChildren(...counts.map(([label, count]) => {
-    const badge = element("span", label + " " + count);
-    badge.className = "badge badge-outline";
+    const badge = element("span", "");
+    badge.className = "catalog-pill";
+    if (label === "Visible") badge.textContent = label + " " + count;
+    else {
+      const caption = element("span", label);
+      caption.className = "section-kicker";
+      badge.append(caption, document.createTextNode(String(count)));
+    }
     return badge;
   }));
   by("catalog").replaceChildren();
@@ -528,6 +551,7 @@ handoffForm.onsubmit = async event => {
 };
 
 function show(session) {
+  by("counts").hidden = !session;
   if (!session) handoff.close();
   admin = session?.user.app_metadata?.catalog_admin === true;
   by("catalog-admin").hidden = !admin;

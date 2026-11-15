@@ -61,6 +61,7 @@
         <label>Category <select id="stock-category" class="select select-bordered"></select></label>
         <label>Form <select id="stock-form" class="select select-bordered"></select></label>
       </div>
+      <label class="block mt-4"><input id="show-retired" type="checkbox" class="checkbox checkbox-sm"> Show retired items</label>
       <p id="stock-empty" class="mt-4" hidden>Your inventory is empty.</p>
       <div style="overflow:auto"><table class="table mt-4">
         <thead><tr>
@@ -116,7 +117,7 @@ function sortInventory() {
     return direction * comparison || left.master_item_id - right.master_item_id;
   });
   for (const { row, item } of inventoryRows) {
-    row.hidden = !inCategory(item) || (Boolean(form.value) && item.master_items?.form !== form.value) ||
+    row.hidden = (!item.is_active && !by("show-retired").checked) || !inCategory(item) || (Boolean(form.value) && item.master_items?.form !== form.value) ||
       ![item.master_items?.name, item.supplier].some(value => (value ?? "").toLowerCase().includes(term));
     if (!row.hidden) visible++;
     by("stock").append(row);
@@ -142,6 +143,7 @@ by("stock-category").addEventListener("change", () => {
   sortInventory();
 });
 by("stock-form").addEventListener("change", sortInventory);
+by("show-retired").addEventListener("change", sortInventory);
 
 const purchaseUnits = {
   g: [1, "g"], kg: [1000, "g"], lb: [453.592, "g"], oz: [28.3495, "g"],
@@ -172,7 +174,7 @@ function displayUnitCost(item, cell, retailCell) {
 async function inventory() {
   const version = ++loadVersion;
   const { data, error } = await db.from("inventory_items")
-    .select("master_item_id,in_stock,purchase_total_cost,purchase_weight_grams,supplier,stock_quantity,stock_unit,purchase_quantity,purchase_unit,markup_percent,master_items(name,category,form,density_g_per_ml)")
+    .select("master_item_id,is_active,in_stock,purchase_total_cost,purchase_weight_grams,supplier,stock_quantity,stock_unit,purchase_quantity,purchase_unit,markup_percent,master_items(name,category,form,density_g_per_ml)")
     .order("master_item_id");
   if (version !== loadVersion || by("workspace").hidden) return;
   by("stock").replaceChildren();
@@ -255,7 +257,31 @@ async function inventory() {
       tell(error || !data ? "Could not save the inventory item." : "Inventory item saved.");
     };
     const actions = document.createElement("td");
-    actions.append(form);
+    const lifecycle = element("button", item.is_active ? "Retire" : "Restore");
+    lifecycle.type = "button";
+    lifecycle.className = "btn btn-ghost";
+    lifecycle.onclick = async () => {
+      const active = !item.is_active;
+      lifecycle.disabled = true;
+      const { data, error } = await db.from("inventory_items").update({ is_active: active })
+        .eq("master_item_id", item.master_item_id).eq("is_active", item.is_active)
+        .select("is_active").maybeSingle();
+      lifecycle.disabled = false;
+      if (!row.isConnected) return;
+      if (error || !data) {
+        tell("Could not change item status. Reload Inventory and try again.");
+        return;
+      }
+      item.is_active = data.is_active;
+      lifecycle.textContent = item.is_active ? "Retire" : "Restore";
+      stockStatus.textContent = item.is_active ? "" : "Retired";
+      sortInventory();
+      tell(item.is_active ? "Inventory item restored." : "Inventory item retired.");
+    };
+    const stockStatus = element("span", item.is_active ? "" : "Retired");
+    stockStatus.className = "block text-sm";
+    row.firstElementChild.append(stockStatus);
+    actions.append(form, lifecycle);
     row.append(actions);
     inventoryRows.push({item, row});
   }

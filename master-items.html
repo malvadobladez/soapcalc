@@ -87,7 +87,8 @@
       </div>
       <div id="catalog-admin" class="flex flex-wrap gap-3 mt-4" hidden>
         <button id="new-item" type="button" class="btn btn-primary">Add to the Catalog</button>
-        <button id="bulk-edit" type="button" class="btn btn-ghost">Bulk Edit Selected</button>
+        <button id="bulk-edit" type="button" class="btn btn-ghost">Bulk Edit</button>
+        <button id="edit-selected" type="button" class="btn btn-primary" hidden>Edit selected</button>
       </div>
       <dialog id="editor" class="surface-panel p-6" style="margin:auto;max-width:min(92vw,34rem)">
         <form id="edit-form" class="space-y-4">
@@ -202,6 +203,7 @@ let items = [];
 let owned = new Set();
 let page = 0;
 let admin = false;
+let bulkMode = false;
 let editIds = [];
 const selected = new Set();
 
@@ -222,6 +224,11 @@ function edit(ids = []) {
 
 by("new-item").onclick = () => edit();
 by("bulk-edit").onclick = () => {
+  bulkMode = !bulkMode;
+  selected.clear();
+  render();
+};
+by("edit-selected").onclick = () => {
   if (selected.size) edit([...selected]);
   else tell("Select at least one catalog item.");
 };
@@ -276,6 +283,8 @@ function choices(select, values, label) {
 }
 
 function render() {
+  by("bulk-edit").textContent = bulkMode ? "Cancel Bulk Edit" : "Bulk Edit";
+  by("edit-selected").hidden = !bulkMode;
   const category = by("category");
   const form = by("form");
   const term = by("search").value.trim().toLowerCase();
@@ -322,7 +331,7 @@ function render() {
       toggle.textContent = (detailRow.hidden ? "+ " : "− ") + item.name;
       if (!detailRow.hidden) void viewItem(item, panel);
     };
-    if (admin) {
+    if (admin && bulkMode) {
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = selected.has(item.id);
@@ -393,7 +402,7 @@ async function catalog() {
 function show(session) {
   admin = session?.user.app_metadata?.catalog_admin === true;
   by("catalog-admin").hidden = !admin;
-  if (!session) { selected.clear(); by("editor").close(); }
+  if (!session) { bulkMode = false; selected.clear(); by("editor").close(); }
   by("login").hidden = Boolean(session);
   by("workspace").hidden = !session;
   if (session) { tell(""); void catalog(); }

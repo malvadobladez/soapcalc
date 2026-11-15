@@ -25,7 +25,10 @@
     .item-facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(12rem,1fr)); gap:.75rem; margin-top:1rem; }
     .item-facts dt { font-weight:600; }
     .item-facts dd { margin:0; overflow-wrap:anywhere; white-space:pre-wrap; }
-    #item-details { margin:auto; width:min(92vw,58rem); max-height:85vh; overflow:auto; }
+    .catalog-grid .detail-row td { white-space:normal; background:transparent; }
+    .detail-panel { background:#efe4d0; border:1px solid #dfcfb0; border-radius:1rem; padding:1rem; }
+    .detail-panel .item-facts { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    @media(max-width:650px) { .detail-panel .item-facts { grid-template-columns:1fr; } }
   </style>
 </head>
 <body class="app-shell antialiased">
@@ -91,12 +94,6 @@
           <button id="close-editor" type="button" class="btn btn-ghost">Cancel</button>
         </form>
       </dialog>
-      <dialog id="item-details" class="surface-panel p-6" aria-labelledby="item-details-title">
-        <form method="dialog"><button class="btn btn-ghost">Close</button></form>
-        <h2 id="item-details-title" class="text-2xl mt-2"></h2>
-        <p id="item-details-status" role="status"></p>
-        <div id="item-facts"></div>
-      </dialog>
       <div class="catalog-scroll mt-4">
         <table class="table catalog-grid">
           <thead><tr><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Form</th><th scope="col">Inventory</th><th scope="col">Actions</th></tr></thead>
@@ -121,18 +118,12 @@ let revision = 0;
 const element = (tag, value) => { const item = document.createElement(tag); item.textContent = value; return item; };
 
 const pageSize = 50;
-let detailRequest = 0;
-
-async function viewItem(item) {
-  const request = ++detailRequest;
-  const dialog = by("item-details");
-  by("item-details-title").textContent = item.name;
-  by("item-details-status").textContent = "Loading item details…";
-  by("item-facts").replaceChildren();
-  dialog.showModal();
+async function viewItem(item, panel) {
+  panel.textContent = "Loading item details…";
   const { data, error } = await db.from("master_items").select("*").eq("id", item.id).single();
-  if (request !== detailRequest || !dialog.open) return;
-  if (error) { by("item-details-status").textContent = "Could not load item details."; return; }
+  if (!panel.isConnected) return;
+  if (error) { panel.textContent = "Could not load item details."; return; }
+  panel.replaceChildren();
   const { metadata, ...core } = data;
   const values = { ...metadata, ...core, in_inventory: owned.has(item.id) };
   const sections = [
@@ -162,9 +153,8 @@ async function viewItem(item) {
       list.append(group);
     }
     section.append(list);
-    by("item-facts").append(section);
+    panel.append(section);
   }
-  by("item-details-status").textContent = "";
 }
 let items = [];
 let owned = new Set();
@@ -271,14 +261,25 @@ function render() {
   for (const item of visible.slice(start, start + pageSize)) {
     const row = document.createElement("tr");
     const name = document.createElement("td");
-    const details = document.createElement("details");
-    details.append(element("summary", item.name));
-    details.append(element("p", item.item_class + " · " + (item.is_active ? "Active" : "Inactive")));
-    const facts = element("button", "View all values");
-    facts.type = "button";
-    facts.className = "btn btn-ghost";
-    facts.onclick = () => viewItem(item);
-    details.append(facts);
+    const toggle = element("button", "+ " + item.name);
+    toggle.type = "button";
+    toggle.className = "font-semibold";
+    toggle.setAttribute("aria-expanded", "false");
+    const detailRow = document.createElement("tr");
+    detailRow.className = "detail-row";
+    detailRow.hidden = true;
+    const detailCell = document.createElement("td");
+    detailCell.colSpan = 5;
+    const panel = document.createElement("div");
+    panel.className = "detail-panel";
+    detailCell.append(panel);
+    detailRow.append(detailCell);
+    toggle.onclick = () => {
+      detailRow.hidden = !detailRow.hidden;
+      toggle.setAttribute("aria-expanded", String(!detailRow.hidden));
+      toggle.textContent = (detailRow.hidden ? "+ " : "− ") + item.name;
+      if (!detailRow.hidden) void viewItem(item, panel);
+    };
     if (admin) {
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
@@ -287,14 +288,14 @@ function render() {
       checkbox.onchange = () => checkbox.checked ? selected.add(item.id) : selected.delete(item.id);
       name.append(checkbox);
     }
-    name.append(details);
+    name.append(toggle);
     const inInventory = owned.has(item.id);
     row.append(name, element("td", item.category ?? "—"), element("td", item.form ?? "—"), element("td", inInventory ? "Yes" : "No"));
     const actions = document.createElement("td");
     const view = element("button", "View");
     view.type = "button";
     view.className = "btn btn-ghost";
-    view.onclick = () => viewItem(item);
+    view.onclick = () => toggle.click();
     const add = element("button", "Inventory");
     add.type = "button";
     add.className = "btn btn-ghost";
@@ -320,7 +321,7 @@ function render() {
       actions.append(modify);
     }
     row.append(actions);
-    by("catalog").append(row);
+    by("catalog").append(row, detailRow);
   }
   by("catalog-note").textContent = visible.length
     ? "Showing " + (start + 1) + "–" + Math.min(start + pageSize, visible.length) + " of " + visible.length
@@ -350,7 +351,7 @@ async function catalog() {
 function show(session) {
   admin = session?.user.app_metadata?.catalog_admin === true;
   by("catalog-admin").hidden = !admin;
-  if (!session) { selected.clear(); by("editor").close(); by("item-details").close(); }
+  if (!session) { selected.clear(); by("editor").close(); }
   by("login").hidden = Boolean(session);
   by("workspace").hidden = !session;
   if (session) { tell(""); void catalog(); }

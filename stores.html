@@ -56,7 +56,17 @@
       <button id="logout" type="button" class="btn btn-ghost">Sign out</button>
       <a href="/master-items.html" class="btn btn-ghost">Browse Master Items</a>
       <h2 class="text-2xl mt-4">My Inventory</h2>
-      <ul id="stock" class="space-y-4 mt-4"></ul>
+      <p id="stock-empty" class="mt-4" hidden>Your inventory is empty.</p>
+      <div style="overflow:auto"><table class="table mt-4">
+        <thead><tr>
+          <th scope="col"><button type="button" data-sort="name">Name</button></th>
+          <th scope="col"><button type="button" data-sort="in_stock">In stock</button></th>
+          <th scope="col"><button type="button" data-sort="purchase_total_cost">Purchase cost</button></th>
+          <th scope="col"><button type="button" data-sort="purchase_weight_grams">Purchase weight (g)</button></th>
+          <th scope="col">Actions</th>
+        </tr></thead>
+        <tbody id="stock"></tbody>
+      </table></div>
     </div>
   </section>
 </main>
@@ -68,28 +78,62 @@ const by = id => document.getElementById(id);
 const tell = message => { by("status").textContent = message; };
 const element = (tag, value) => { const item = document.createElement(tag); item.textContent = value; return item; };
 
+let inventoryRows = [];
+let sortKey = "name";
+let direction = 1;
+let loadVersion = 0;
+const headers = [...document.querySelectorAll("[data-sort]")];
+
+function sortInventory() {
+  const value = item => sortKey === "name" ? item.master_items?.name : item[sortKey];
+  inventoryRows.sort(({ item: left }, { item: right }) => {
+    const a = value(left);
+    const b = value(right);
+    if (a == null || b == null) return Number(a == null) - Number(b == null);
+    const comparison = sortKey === "name" ? a.localeCompare(b) : Number(a) - Number(b);
+    return direction * comparison || left.master_item_id - right.master_item_id;
+  });
+  for (const { row } of inventoryRows) by("stock").append(row);
+  for (const button of headers) {
+    const header = button.closest("th");
+    if (button.dataset.sort === sortKey) header.setAttribute("aria-sort", direction === 1 ? "ascending" : "descending");
+    else header.removeAttribute("aria-sort");
+  }
+}
+
+for (const button of headers) button.onclick = () => {
+  direction = sortKey === button.dataset.sort ? -direction : 1;
+  sortKey = button.dataset.sort;
+  sortInventory();
+};
+
 async function inventory() {
+  const version = ++loadVersion;
   const { data, error } = await db.from("inventory_items")
     .select("master_item_id,in_stock,purchase_total_cost,purchase_weight_grams,master_items(name)")
     .order("master_item_id");
-  if (by("workspace").hidden) return;
+  if (version !== loadVersion || by("workspace").hidden) return;
   by("stock").replaceChildren();
   if (error) return tell("Could not load your inventory.");
-  if (!data.length) by("stock").append(element("li", "Your inventory is empty."));
+  inventoryRows = [];
+  by("stock-empty").hidden = Boolean(data.length);
   for (const item of data) {
-    const row = element("li", "");
+    const row = document.createElement("tr");
     const form = document.createElement("form");
-    form.className = "flex flex-wrap items-center gap-3";
-    form.append(element("strong", item.master_items?.name ?? "Ingredient"));
+    form.id = "stock-item-" + item.master_item_id;
+    row.append(element("th", item.master_items?.name ?? "Ingredient"));
+    row.firstElementChild.scope = "row";
     function field(label, name, type, value, step) {
-      const caption = element("label", label + " ");
+      const cell = document.createElement("td");
       const input = document.createElement("input");
       input.name = name;
       input.type = type;
       if (type === "checkbox") input.checked = value;
       else { input.value = value ?? ""; input.step = step; input.min = name === "grams" ? "0.001" : "0"; }
-      caption.append(input);
-      form.append(caption);
+      input.setAttribute("aria-label", label + " for " + (item.master_items?.name ?? "ingredient"));
+      input.setAttribute("form", form.id);
+      cell.append(input);
+      row.append(cell);
       return input;
     }
     const stocked = field("In stock", "stocked", "checkbox", item.in_stock);
@@ -105,18 +149,22 @@ async function inventory() {
         in_stock: stocked.checked, purchase_total_cost: cost.value || null, purchase_weight_grams: grams.value || null
       }).eq("master_item_id", item.master_item_id);
       save.disabled = false;
+      if (!error) Object.assign(item, {in_stock: stocked.checked, purchase_total_cost: cost.value || null, purchase_weight_grams: grams.value || null});
       tell(error ? "Could not save the inventory item." : "Inventory item saved.");
     };
-    row.append(form);
-    by("stock").append(row);
+    const actions = document.createElement("td");
+    actions.append(form);
+    row.append(actions);
+    inventoryRows.push({item, row});
   }
+  sortInventory();
 }
 
 function show(session) {
   by("login").hidden = Boolean(session);
   by("workspace").hidden = !session;
   if (session) { tell(""); void inventory(); }
-  else { by("stock").replaceChildren(); tell("Sign in to view the catalog and your inventory."); }
+  else { ++loadVersion; inventoryRows = []; by("stock").replaceChildren(); tell("Sign in to view the catalog and your inventory."); }
 }
 
 by("login").onsubmit = async event => {

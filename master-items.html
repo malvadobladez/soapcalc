@@ -105,6 +105,7 @@
           <label>Category <input name="category" class="input input-bordered" maxlength="50"></label>
           <label>Form <input name="form" class="input input-bordered" maxlength="50"></label>
           </div>
+          <label>Status <select name="is_active" class="select select-bordered"><option value="">Keep existing</option><option value="true">Active</option><option value="false">Inactive</option></select></label>
           <p id="edit-status" role="status"></p>
           <button class="btn btn-primary">Save</button>
           <button id="close-editor" type="button" class="btn btn-ghost">Cancel</button>
@@ -116,6 +117,7 @@
           <h2 id="handoff-title" class="text-2xl"></h2>
           <div class="entry-grid">
             <label>Supplier <input class="input input-bordered" name="supplier" maxlength="120"></label>
+            <label>Manufacturer <input class="input input-bordered" name="manufacturer" maxlength="120"></label>
             <label>Purchase cost <input class="input input-bordered" name="purchase_total_cost" type="number" min="0" max="99999999.99" step=".01"></label>
             <label>Purchase amount <input class="input input-bordered" name="purchase_quantity" type="number" min=".0001" max="9999999999.9999" step=".0001"></label>
             <label>Purchase unit <select class="select select-bordered" name="purchase_unit">
@@ -254,6 +256,7 @@ function edit(ids = []) {
   const bulk = ids.length > 1;
   by("edit-title").textContent = bulk ? "Edit " + ids.length + " selected items" : item ? "Edit catalog item" : "Add to the Catalog";
   by("name-field").hidden = bulk;
+  form.elements.is_active.value = bulk ? "" : String(item?.is_active ?? true);
   form.elements.name.required = !bulk;
   for (const name of ["name", "item_class", "category", "form"]) form.elements[name].value = item?.[name] ?? "";
   by("edit-status").textContent = bulk ? "Blank fields leave existing values in place." : "";
@@ -281,6 +284,7 @@ by("edit-form").onsubmit = async event => {
   for (const [field, raw] of new FormData(form)) {
     const value = raw.trim();
     if (bulk && (field === "name" || !value)) continue;
+    if (field === "is_active") { if (value) values[field] = value === "true"; continue; }
     values[field] = value || (field === "item_class" ? "Other" : null);
   }
   if ((!bulk && !values.name) || !Object.keys(values).length) {
@@ -474,6 +478,7 @@ handoffForm.onsubmit = async event => {
     const { error } = await db.from("inventory_items").upsert({
       master_item_id: item.id,
       supplier: fields.get("supplier").trim() || null,
+      manufacturer: fields.get("manufacturer").trim() || null,
       purchase_total_cost: fields.get("purchase_total_cost") || null,
       purchase_quantity: quantity || null,
       purchase_unit: unit || null,

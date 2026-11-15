@@ -1,25 +1,33 @@
 <!doctype html>
 <html lang="en" data-theme="brenda">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Stores | The Hidden Grimoire</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/static/css/app.css">
 <style>
     .grimoire-nav { display:flex; flex-wrap:wrap; gap:.25rem .75rem; }
     .grimoire-nav a { padding:.3rem .5rem; text-decoration:underline; text-underline-offset:.2em; }
-    .grimoire-mobile { display:block; }
+    .grimoire-sidebar-nav { flex-direction:column; }
+    .grimoire-sidebar-nav a { display:block; border-radius:.85rem; }
+    .grimoire-nav a[aria-current='page'] { background:#efe4d0; color:#355846; }
+    .grimoire-mobile { display:flex; }
     .grimoire-logo { width:8rem; }
     @media (min-width:768px) { .grimoire-mobile { display:none; } }
   </style>
+</head>
+<body class="app-shell antialiased">
 <div class="workspace-frame">
 <aside class="workspace-sidebar surface-panel p-5">
       <div class="sidebar-brand">
         <img class="sidebar-brand-logo grimoire-logo" src="/static/img/brand/site-logo.jpg" width="400" height="400" alt="">
         <p class="section-kicker">The Hidden Grimoire</p>
       </div>
-      <nav class="grimoire-nav py-4" aria-label="Workspace">
+      <nav class="grimoire-nav grimoire-sidebar-nav py-4" aria-label="Workspace">
         <a href="/">Overview</a>
-        <a href="/stores.html">Inventory</a><a href="/master-items.html">Master Items</a>
+        <a href="/stores.html" aria-current="page">Inventory</a>
+        <a href="/master-items.html">Master Items</a>
         <a href="/#leaves">Tea recipes</a>
         <a href="/#calculus">Soap calculator</a>
       </nav>
@@ -28,7 +36,14 @@
       </div>
     </aside>
 <main class="workspace-main">
-  <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace"><a href="/">Overview</a><a href="/stores.html">Inventory</a><a href="/master-items.html">Master Items</a></nav>
+  <header class="surface-panel px-5 py-4">
+    <p class="section-kicker">The Living Grimoire</p>
+    <p class="text-xl font-semibold">Inventory</p>
+    <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace">
+          <a href="/">Overview</a><a href="/stores.html" aria-current="page">Inventory</a><a href="/master-items.html">Master Items</a>
+          <a href="/#leaves">Tea recipes</a><a href="/#calculus">Soap calculator</a>
+        </nav>
+  </header>
   <section class="surface-panel p-6">
     <h1 class="text-4xl">The Stores</h1>
     <p id="status" role="status">Connecting…</p>
@@ -120,4 +135,5 @@ db.auth.onAuthStateChange((event, session) => {
   if (["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT"].includes(event)) setTimeout(() => show(session), 0);
 });
 </script>
+</body>
 </html>

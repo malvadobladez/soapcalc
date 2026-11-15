@@ -1,33 +1,78 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="brenda">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="SoapCalc is a workspace for soap formulas, tea recipes, and ingredient inventory.">
-<title>SoapCalc</title>
-<style>
-* { box-sizing: border-box; }
-body { margin: 0; background: #f9f5eb; color: #233830; font: 1rem/1.6 system-ui, sans-serif; }
-main { max-width: 72rem; margin: auto; padding: clamp(2rem, 8vw, 7rem) 1.5rem; }
-h1, h2 { font-family: Georgia, serif; font-weight: normal; line-height: 1.1; }
-h1 { margin: 0; font-size: clamp(3.5rem, 12vw, 8rem); letter-spacing: -.07em; }
-.intro { max-width: 37rem; font-size: 1.2rem; }
-ul { list-style: none; padding: 0; margin: 3rem 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; }
-li { border-top: 2px solid #719181; padding: .8rem 0; }
-h2 { font-size: 1.75rem; margin: .5rem 0; }
-footer { border-top: 1px solid #b8c4b8; padding-top: 1rem; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="The Hidden Grimoire workspace for soap, tea, and ingredients.">
+  <title>Overview | The Hidden Grimoire</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <style>
+    .grimoire-nav { display:flex; flex-wrap:wrap; gap:.25rem .75rem; }
+    .grimoire-nav a { padding:.3rem .5rem; text-decoration:underline; text-underline-offset:.2em; }
+    .grimoire-mobile { display:block; }
+    .grimoire-logo { width:8rem; }
+    @media (min-width:768px) { .grimoire-mobile { display:none; } }
+  </style>
 </head>
-<body>
-<main>
-<h1>SoapCalc</h1>
-<p class="intro">A workspace for making soap, blending tea, and tracking ingredients.</p>
-<ul aria-label="Planned features">
-<li><h2>Soap calculator</h2><p>Build soap formulas and calculate lye and water.</p></li>
-<li><h2>Tea recipes</h2><p>Save your own blends and browse shared recipes.</p></li>
-<li><h2>Ingredient inventory</h2><p>Explore the shared catalog and track your own stock and costs.</p></li>
-</ul>
-<footer>The workspace is under development.</footer>
-</main>
+<body class="app-shell antialiased">
+  <div class="workspace-frame">
+    <aside class="workspace-sidebar surface-panel p-5">
+      <div class="sidebar-brand">
+        <img class="sidebar-brand-logo grimoire-logo" src="/static/img/brand/site-logo.jpg" width="400" height="400" alt="">
+        <p class="section-kicker">The Hidden Grimoire</p>
+      </div>
+      <nav class="grimoire-nav py-4" aria-label="Workspace">
+        <a href="#overview" aria-current="page">Overview</a>
+        <a href="#stores">Inventory</a>
+        <a href="#leaves">Tea recipes</a>
+        <a href="#calculus">Soap calculator</a>
+      </nav>
+      <div class="sidebar-art-shell">
+        <img class="sidebar-art-image" src="/static/img/brand/sidebar-art.jpg" width="400" height="400" alt="" decoding="async">
+      </div>
+    </aside>
+    <main id="overview" class="workspace-main">
+      <header class="surface-panel px-5 py-4">
+        <p class="section-kicker">The Living Grimoire</p>
+        <p class="text-xl font-semibold">Overview</p>
+        <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace">
+          <a href="#stores">Inventory</a>
+          <a href="#leaves">Tea recipes</a>
+          <a href="#calculus">Soap calculator</a>
+        </nav>
+      </header>
+      <section class="surface-panel relative overflow-hidden px-6 py-10 md:px-10 md:py-14">
+        <div class="absolute inset-y-0 right-0 hidden w-1/2 bg-[radial-gradient(circle_at_top,rgba(53,88,70,0.24),transparent_58%)] md:block"></div>
+        <div class="relative grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+          <div class="space-y-6">
+            <h1 class="overview-script-title">All that is made is written — and endures.</h1>
+            <p class="max-w-2xl text-lg leading-8 text-neutral/80">This is no mere collection of notes, but a living record — where knowledge is kept, craft is preserved, and every creation may be wrought again, as it was first intended.</p>
+            <div class="flex flex-wrap gap-3">
+              <a class="btn btn-primary rounded-full px-6" href="#stores">Enter the Stores</a>
+              <a class="btn btn-ghost rounded-full px-6" href="#leaves">Turn the Leaves</a>
+              <a class="btn btn-ghost rounded-full px-6" href="#calculus">Enter the Calculus</a>
+            </div>
+          </div>
+          <div id="stores" class="surface-panel bg-base-200/70 p-6">
+            <h2 class="overview-script-subtitle">The Stores</h2>
+            <p class="mt-4">The shared ingredient catalog and your private stock and costing will be available here.</p>
+          </div>
+        </div>
+      </section>
+      <div class="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <section id="leaves" class="surface-panel p-6 md:p-8">
+          <p class="section-kicker">Recent Leaves</p>
+          <h2 class="overview-script-subtitle overview-script-subtitle-tight mt-2">Tea Recipes</h2>
+          <p class="mt-4">Your blends and shared recipes will appear here.</p>
+        </section>
+        <section id="calculus" class="surface-panel p-6 md:p-8">
+          <p class="section-kicker">SoapCalc</p>
+          <h2 class="overview-script-subtitle overview-script-subtitle-tight mt-2">Preserved Soap Workings</h2>
+          <p class="mt-4">The calculator and your saved soap formulas will appear here.</p>
+        </section>
+      </div>
+    </main>
+  </div>
 </body>
 </html>

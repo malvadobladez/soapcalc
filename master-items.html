@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en" data-theme="brenda">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Master Items | The Hidden Grimoire</title>
+<link rel="stylesheet" href="/static/css/app.css">
+<style>
+    .grimoire-nav { display:flex; flex-wrap:wrap; gap:.25rem .75rem; }
+    .grimoire-nav a { padding:.3rem .5rem; text-decoration:underline; text-underline-offset:.2em; }
+    .grimoire-mobile { display:block; }
+    .grimoire-logo { width:8rem; }
+    @media (min-width:768px) { .grimoire-mobile { display:none; } }
+  </style>
+<div class="workspace-frame">
+<aside class="workspace-sidebar surface-panel p-5">
+      <div class="sidebar-brand">
+        <img class="sidebar-brand-logo grimoire-logo" src="/static/img/brand/site-logo.jpg" width="400" height="400" alt="">
+        <p class="section-kicker">The Hidden Grimoire</p>
+      </div>
+      <nav class="grimoire-nav py-4" aria-label="Workspace">
+        <a href="/">Overview</a>
+        <a href="/stores.html">Inventory</a><a href="/master-items.html">Master Items</a>
+        <a href="/#leaves">Tea recipes</a>
+        <a href="/#calculus">Soap calculator</a>
+      </nav>
+      <div class="sidebar-art-shell">
+        <img class="sidebar-art-image" src="/static/img/brand/sidebar-art.jpg" width="400" height="400" alt="" decoding="async">
+      </div>
+    </aside>
+<main class="workspace-main">
+  <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace"><a href="/">Overview</a><a href="/stores.html">Inventory</a><a href="/master-items.html">Master Items</a></nav>
+  <section class="surface-panel p-6">
+    <h1 class="text-4xl">Master Items</h1>
+    <p id="status" role="status">Connecting…</p>
+    <form id="login" class="space-y-4 mt-4" hidden>
+      <label>Email <input name="email" class="input input-bordered" type="email" autocomplete="username" required></label>
+      <label>Password <input name="password" class="input input-bordered" type="password" autocomplete="current-password" required></label>
+      <button class="btn btn-primary">Sign in</button>
+    </form>
+    <div id="workspace" hidden>
+      <button id="logout" type="button" class="btn btn-ghost">Sign out</button>
+      <label>Find an ingredient <input id="search" type="search" class="input input-bordered"></label>
+      <div style="overflow:auto"><table class="table mt-4"><thead><tr><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Form</th><th scope="col">Actions</th></tr></thead><tbody id="catalog"></tbody></table></div>
+      <p id="catalog-note" class="mt-4"></p>
+    </div>
+  </section>
+</main>
+</div>
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm";
+const db = createClient("https://dfuanosyewsimvhdparf.supabase.co", "sb_publishable_biDbT_ZmXynIVLrgukrz5g_ZBTk84T7");
+const by = id => document.getElementById(id);
+const tell = message => { by("status").textContent = message; };
+let revision = 0;
+const element = (tag, value) => { const item = document.createElement(tag); item.textContent = value; return item; };
+
+async function catalog() {
+  const request = ++revision;
+  const term = by("search").value.trim().replace(/[%_\\]/g, "");
+  let query = db.from("master_items").select("id,name,category,form").eq("is_active", true).order("name").limit(50);
+  if (term) query = query.ilike("name", "%" + term + "%");
+  const { data, error } = await query;
+  if (request !== revision || by("workspace").hidden) return;
+  by("catalog").replaceChildren();
+  if (error) return tell("Could not load Master Items.");
+  by("catalog-note").textContent = data.length === 50 ? "Showing the first 50 matches. Search to narrow the list." : data.length ? "" : "No matching ingredients.";
+  for (const item of data) {
+    const row = document.createElement("tr");
+    row.append(element("td", item.name), element("td", item.category ?? "—"), element("td", item.form ?? "—"));
+    const add = element("button", "Add to my inventory");
+    add.type = "button";
+    add.className = "btn btn-ghost";
+    add.onclick = async () => {
+      add.disabled = true;
+      const { error } = await db.from("inventory_items").upsert(
+        { master_item_id: item.id }, { onConflict: "owner_id,master_item_id", ignoreDuplicates: true }
+      );
+      add.disabled = false;
+      if (error) return tell("Could not add the ingredient.");
+      tell("Ingredient is in your inventory.");
+
+    };
+    const actions = document.createElement("td");
+    actions.append(add);
+    row.append(actions);
+    by("catalog").append(row);
+  }
+}
+
+function show(session) {
+  by("login").hidden = Boolean(session);
+  by("workspace").hidden = !session;
+  if (session) { tell(""); void catalog(); }
+  else { ++revision; by("catalog").replaceChildren(); tell("Sign in to view the catalog and your inventory."); }
+}
+
+by("login").onsubmit = async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const fields = new FormData(form);
+  const button = form.querySelector("button");
+  button.disabled = true;
+  const { error } = await db.auth.signInWithPassword({ email: fields.get("email"), password: fields.get("password") });
+  button.disabled = false;
+  form.reset();
+  if (error) tell("Sign-in failed. Check your email and password.");
+};
+by("logout").onclick = async () => { const { error } = await db.auth.signOut(); if (error) tell("Could not sign out."); };
+by("search").addEventListener("change", catalog);
+db.auth.onAuthStateChange((event, session) => {
+  if (["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT"].includes(event)) setTimeout(() => show(session), 0);
+});
+</script>
+</html>

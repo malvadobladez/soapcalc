@@ -36,6 +36,12 @@
     .compact-block + .compact-block, .compact-footer { border-top:1px solid #dfcfb0; margin-top:.65rem; padding-top:.65rem; }
     .compact-footer { display:flex; flex-wrap:wrap; gap:.25rem 1rem; font-size:.9rem; }
     @media(max-width:650px) { .compact-values { grid-template-columns:1fr; } }
+      .entry-dialog { margin:auto; width:min(92vw,46rem); max-height:88vh; overflow:auto; }
+    .entry-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+    .entry-grid label { display:grid; gap:.25rem; min-width:0; }
+    .entry-grid input, .entry-grid select { width:100%; min-width:0; }
+    .entry-grid #name-field { grid-column:1/-1; }
+    @media(max-width:540px) { .entry-grid { grid-template-columns:1fr; } }
   </style>
 </head>
 <body class="app-shell antialiased">
@@ -90,16 +96,38 @@
         <button id="bulk-edit" type="button" class="btn btn-ghost">Bulk Edit</button>
         <button id="edit-selected" type="button" class="btn btn-primary" hidden>Edit selected</button>
       </div>
-      <dialog id="editor" class="surface-panel p-6" style="margin:auto;max-width:min(92vw,34rem)">
+      <dialog id="editor" class="surface-panel p-6 entry-dialog" aria-labelledby="edit-title">
         <form id="edit-form" class="space-y-4">
           <h2 id="edit-title" class="text-2xl">Catalog item</h2>
+          <div class="entry-grid">
           <label id="name-field">Name <input name="name" class="input input-bordered" maxlength="255"></label>
           <label>Class <input name="item_class" class="input input-bordered" maxlength="50"></label>
           <label>Category <input name="category" class="input input-bordered" maxlength="50"></label>
           <label>Form <input name="form" class="input input-bordered" maxlength="50"></label>
+          </div>
           <p id="edit-status" role="status"></p>
           <button class="btn btn-primary">Save</button>
           <button id="close-editor" type="button" class="btn btn-ghost">Cancel</button>
+        </form>
+      </dialog>
+      <dialog id="inventory-handoff" class="surface-panel p-6 entry-dialog" aria-labelledby="handoff-title">
+        <form id="handoff-form" class="space-y-4">
+          <p class="section-kicker">Inventory Handoff</p>
+          <h2 id="handoff-title" class="text-2xl"></h2>
+          <div class="entry-grid">
+            <label>Supplier <input class="input input-bordered" name="supplier" maxlength="120"></label>
+            <label>Purchase cost <input class="input input-bordered" name="purchase_total_cost" type="number" min="0" max="99999999.99" step=".01"></label>
+            <label>Purchase amount <input class="input input-bordered" name="purchase_quantity" type="number" min=".0001" max="9999999999.9999" step=".0001"></label>
+            <label>Purchase unit <select class="select select-bordered" name="purchase_unit">
+              <option value="">Choose a unit</option><option value="g">Grams</option><option value="kg">Kilograms</option>
+              <option value="ml">Millilitres</option><option value="l">Litres</option><option value="oz">Ounces</option>
+              <option value="fl oz">Fluid ounces</option><option value="lb">Pounds</option><option value="each">Each</option>
+            </select></label>
+            <label>Markup % <input class="input input-bordered" name="markup_percent" type="number" min="0" max="99999.99" step=".01" value="0"></label>
+          </div>
+          <p id="handoff-status" role="status"></p>
+          <button type="submit" class="btn btn-primary">Add to Inventory</button>
+          <button id="handoff-cancel" type="button" class="btn btn-ghost">Cancel</button>
         </form>
       </dialog>
       <div class="catalog-scroll mt-4">
@@ -376,18 +404,7 @@ function render() {
     add.type = "button";
     add.className = "btn btn-ghost";
     add.disabled = inInventory || !item.is_active;
-    add.onclick = async () => {
-      const request = revision;
-      add.disabled = true;
-      const { error } = await db.from("inventory_items").upsert(
-        { master_item_id: item.id }, { onConflict: "owner_id,master_item_id", ignoreDuplicates: true }
-      );
-      if (request !== revision || by("workspace").hidden) return;
-      if (error) { add.disabled = false; return tell("Could not add the ingredient."); }
-      owned.add(item.id);
-      render();
-      tell("Ingredient is in your inventory.");
-    };
+    add.onclick = () => openHandoff(item);
     actions.append(add, view);
     if (admin) {
       const modify = element("button", "Edit");
@@ -424,7 +441,59 @@ async function catalog() {
   }
 }
 
+let handoffItem = null;
+let handoffSaving = false;
+const handoff = by("inventory-handoff");
+const handoffForm = by("handoff-form");
+
+function openHandoff(item) {
+  handoffItem = item;
+  handoffForm.reset();
+  by("handoff-status").textContent = "";
+  by("handoff-title").textContent = item.name;
+  handoff.showModal();
+}
+
+by("handoff-cancel").onclick = () => { if (!handoffSaving) handoff.close(); };
+handoff.addEventListener("cancel", event => { if (handoffSaving) event.preventDefault(); });
+handoffForm.onsubmit = async event => {
+  event.preventDefault();
+  if (handoffSaving || !handoffItem) return;
+  const item = handoffItem;
+  const fields = new FormData(handoffForm);
+  const quantity = fields.get("purchase_quantity");
+  const unit = fields.get("purchase_unit");
+  if (Boolean(quantity) !== Boolean(unit)) {
+    by("handoff-status").textContent = "Enter both a purchase amount and unit, or leave both blank.";
+    return;
+  }
+  const submit = handoffForm.querySelector('[type="submit"]');
+  const request = revision;
+  handoffSaving = submit.disabled = true;
+  try {
+    const { error } = await db.from("inventory_items").upsert({
+      master_item_id: item.id,
+      supplier: fields.get("supplier").trim() || null,
+      purchase_total_cost: fields.get("purchase_total_cost") || null,
+      purchase_quantity: quantity || null,
+      purchase_unit: unit || null,
+      markup_percent: fields.get("markup_percent") || 0
+    }, { onConflict: "owner_id,master_item_id", ignoreDuplicates: true });
+    if (request !== revision || !handoff.open) return;
+    if (error) throw error;
+    owned.add(item.id);
+    handoff.close();
+    render();
+    tell("Ingredient is in your inventory.");
+  } catch {
+    if (request === revision && handoff.open) by("handoff-status").textContent = "Could not add the ingredient. Try again.";
+  } finally {
+    handoffSaving = submit.disabled = false;
+  }
+};
+
 function show(session) {
+  if (!session) handoff.close();
   admin = session?.user.app_metadata?.catalog_admin === true;
   by("catalog-admin").hidden = !admin;
   if (!session) { bulkMode = false; selected.clear(); by("editor").close(); }

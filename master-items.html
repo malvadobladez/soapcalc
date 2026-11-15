@@ -95,7 +95,7 @@
         <form method="dialog"><button class="btn btn-ghost">Close</button></form>
         <h2 id="item-details-title" class="text-2xl mt-2"></h2>
         <p id="item-details-status" role="status"></p>
-        <dl id="item-facts" class="item-facts"></dl>
+        <div id="item-facts"></div>
       </dialog>
       <div class="catalog-scroll mt-4">
         <table class="table catalog-grid">
@@ -133,19 +133,38 @@ async function viewItem(item) {
   const { data, error } = await db.from("master_items").select("*").eq("id", item.id).single();
   if (request !== detailRequest || !dialog.open) return;
   if (error) { by("item-details-status").textContent = "Could not load item details."; return; }
-  const { id, name, metadata, ...values } = data;
-  const fields = Object.entries({ ...values, ...metadata }).filter(([, value]) => value != null && value !== "");
-  const labels = {sap_naoh:"SAP (NaOH)", sap_koh:"SAP (KOH)", density_g_per_ml:"Density (g/mL)", iodine_value:"Iodine value"};
-  for (const [key, value] of fields) {
-    const label = labels[key] ?? key.replace(/^fa_/, "fatty acid ").replaceAll("_", " ");
-    const display = typeof value === "boolean" ? (value ? "Yes" : "No")
-      : Array.isArray(value) && value.every(entry => typeof entry !== "object") ? value.join(", ")
-      : typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
-    const group = document.createElement("div");
-    group.append(element("dt", label.charAt(0).toUpperCase() + label.slice(1)), element("dd", display));
-    by("item-facts").append(group);
+  const { metadata, ...core } = data;
+  const values = { ...metadata, ...core, in_inventory: owned.has(item.id) };
+  const sections = [
+    ["Catalog", "id item_class category form in_inventory is_active deprecated created_at updated_at source confidence metadata_updated_at"],
+    ["Usage", "scientific_name common_names traditional_use usage_context therapeutic_tags taste_profile caffeine_level evidence_tier skin_feel max_topical_rate"],
+    ["Safety", "safety_notes contraindications allergen_flags drug_interactions skin_safe lip_safe food_grade pregnancy_lactation_notes confidence_reason regulatory_notes unknown_fields human_review_needed"],
+    ["Oil and formulation values", "sap_naoh sap_koh sap_source fa_lauric fa_myristic fa_palmitic fa_stearic fa_ricinoleic fa_oleic fa_linoleic fa_linolenic iodine_value usage_rate_min usage_rate_max density_g_per_ml density_source density_confidence"],
+    ["Colorant profile", "colorant_profile colorant_profile_source_url colorant_profile_updated_at"],
+    ["Notes and references", "notes image_url image_source recheck_interval"]
+  ];
+  const labels = { sap_naoh: "SAP NaOH", sap_koh: "SAP KOH", density_g_per_ml: "Density (g/mL)", in_inventory: "In my inventory", id: "Catalog ID" };
+  for (const [title, fields] of sections) {
+    const section = document.createElement("section");
+    section.className = "surface-panel p-4 mt-4";
+    section.append(element("h3", title));
+    const list = document.createElement("dl");
+    list.className = "item-facts";
+    for (const field of fields.split(" ")) {
+      const value = values[field];
+      const display = value == null || value === "" ? "—"
+        : typeof value === "boolean" ? (value ? "Yes" : "No")
+        : Array.isArray(value) && value.every(entry => typeof entry !== "object") ? (value.join(", ") || "—")
+        : typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
+      const label = labels[field] ?? field.replace(/^fa_/, "").replaceAll("_", " ");
+      const group = document.createElement("div");
+      group.append(element("dt", label[0].toUpperCase() + label.slice(1)), element("dd", display));
+      list.append(group);
+    }
+    section.append(list);
+    by("item-facts").append(section);
   }
-  by("item-details-status").textContent = fields.length ? "" : "No catalog values recorded.";
+  by("item-details-status").textContent = "";
 }
 let items = [];
 let owned = new Set();
@@ -255,6 +274,11 @@ function render() {
     const details = document.createElement("details");
     details.append(element("summary", item.name));
     details.append(element("p", item.item_class + " · " + (item.is_active ? "Active" : "Inactive")));
+    const facts = element("button", "View all values");
+    facts.type = "button";
+    facts.className = "btn btn-ghost";
+    facts.onclick = () => viewItem(item);
+    details.append(facts);
     if (admin) {
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";

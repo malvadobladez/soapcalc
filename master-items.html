@@ -104,7 +104,7 @@
       </dialog>
       <div class="catalog-scroll mt-4">
         <table class="table catalog-grid">
-          <thead><tr><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Form</th><th scope="col">Inventory</th><th scope="col">Actions</th></tr></thead>
+          <thead><tr><th scope="col"><button type="button" data-catalog-sort="name">Name<span aria-hidden="true"></span></button></th><th scope="col"><button type="button" data-catalog-sort="category">Category<span aria-hidden="true"></span></button></th><th scope="col"><button type="button" data-catalog-sort="form">Form<span aria-hidden="true"></span></button></th><th scope="col"><button type="button" data-catalog-sort="inventory">Inventory<span aria-hidden="true"></span></button></th><th scope="col">Actions</th></tr></thead>
           <tbody id="catalog"></tbody>
         </table>
       </div>
@@ -202,6 +202,16 @@ async function viewItem(item, panel) {
 let items = [];
 let owned = new Set();
 let page = 0;
+let sortKey = "name";
+let sortDirection = 1;
+const sortHeaders = [...document.querySelectorAll("[data-catalog-sort]")];
+for (const button of sortHeaders) button.onclick = () => {
+  const key = button.dataset.catalogSort;
+  sortDirection = sortKey === key ? -sortDirection : 1;
+  sortKey = key;
+  page = 0;
+  render();
+};
 let admin = false;
 let bulkMode = false;
 let editIds = [];
@@ -297,6 +307,21 @@ function render() {
     (!by("stock-only").checked || owned.has(item.id)) &&
     [item.name, item.category, item.form].some(value => value?.toLowerCase().includes(term))
   );
+  const value = item => sortKey === "inventory" ? Number(owned.has(item.id)) : item[sortKey];
+  visible.sort((left, right) => {
+    const a = value(left);
+    const b = value(right);
+    if (a == null || b == null) return Number(a == null) - Number(b == null) || left.name.localeCompare(right.name);
+    const order = sortKey === "inventory" ? a - b : a.localeCompare(b);
+    return sortDirection * order || left.name.localeCompare(right.name) || left.id - right.id;
+  });
+  for (const button of sortHeaders) {
+    const active = button.dataset.catalogSort === sortKey;
+    const heading = button.closest("th");
+    if (active) heading.setAttribute("aria-sort", sortDirection === 1 ? "ascending" : "descending");
+    else heading.removeAttribute("aria-sort");
+    button.querySelector("span").textContent = active ? (sortDirection === 1 ? " ↑" : " ↓") : "";
+  }
   page = Math.min(page, Math.max(0, Math.ceil(visible.length / pageSize) - 1));
   const start = page * pageSize;
   const counts = [

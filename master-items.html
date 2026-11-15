@@ -101,9 +101,8 @@
           <h2 id="edit-title" class="text-2xl">Catalog item</h2>
           <div class="entry-grid">
           <label id="name-field">Name <input name="name" class="input input-bordered" maxlength="255"></label>
-          <label>Class <input name="item_class" class="input input-bordered" maxlength="50"></label>
-          <label>Category <input name="category" class="input input-bordered" maxlength="50"></label>
-          <label>Form <input name="form" class="input input-bordered" maxlength="50"></label>
+          <label>Category <select name="category" class="select select-bordered"></select></label>
+          <label>Form <input name="form" class="input input-bordered" maxlength="50" list="catalog-editor-forms"><datalist id="catalog-editor-forms"></datalist></label>
           </div>
           <label>Status <select name="is_active" class="select select-bordered"><option value="">Keep existing</option><option value="true">Active</option><option value="false">Inactive</option></select></label>
           <p id="edit-status" role="status"></p>
@@ -247,6 +246,22 @@ let bulkMode = false;
 let editIds = [];
 const selected = new Set();
 
+const catalogEditor = by("edit-form");
+const editorCategory = item => item?.item_class || item?.category || "";
+
+function setEditorForms() {
+  const category = catalogEditor.elements.category.value;
+  const values = items.filter(item => editorCategory(item) === category).map(item => item.form);
+  const forms = [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  by("catalog-editor-forms").replaceChildren(...forms.map(value => new Option(value, value)));
+  catalogEditor.elements.form.disabled = !category;
+}
+
+catalogEditor.elements.category.onchange = () => {
+  catalogEditor.elements.form.value = "";
+  setEditorForms();
+};
+
 function edit(ids = []) {
   if (!admin) return;
   const form = by("edit-form");
@@ -258,7 +273,14 @@ function edit(ids = []) {
   by("name-field").hidden = bulk;
   form.elements.is_active.value = bulk ? "" : String(item?.is_active ?? true);
   form.elements.name.required = !bulk;
-  for (const name of ["name", "item_class", "category", "form"]) form.elements[name].value = item?.[name] ?? "";
+  form.elements.name.value = item?.name ?? "";
+  const original = editorCategory(item);
+  const categories = [...new Set(items.map(editorCategory).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  form.elements.category.replaceChildren(new Option(bulk ? "Keep existing" : "Choose category first", ""), ...categories.map(value => new Option(value, value)));
+  form.elements.category.required = !bulk;
+  form.elements.category.value = original;
+  setEditorForms();
+  form.elements.form.value = item?.form ?? "";
   by("edit-status").textContent = bulk ? "Blank fields leave existing values in place." : "";
   by("editor").showModal();
 }
@@ -285,7 +307,15 @@ by("edit-form").onsubmit = async event => {
     const value = raw.trim();
     if (bulk && (field === "name" || !value)) continue;
     if (field === "is_active") { if (value) values[field] = value === "true"; continue; }
-    values[field] = value || (field === "item_class" ? "Other" : null);
+    if (field === "category") {
+      const original = editIds.length === 1 ? items.find(item => item.id === editIds[0]) : null;
+      if (value && value !== editorCategory(original)) {
+        values.category = value;
+        values.item_class = value;
+      }
+      continue;
+    }
+    values[field] = value || null;
   }
   if ((!bulk && !values.name) || !Object.keys(values).length) {
     by("edit-status").textContent = bulk ? "Enter at least one change." : "Enter a name.";

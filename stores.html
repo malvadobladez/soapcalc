@@ -56,6 +56,11 @@
       <button id="logout" type="button" class="btn btn-ghost">Sign out</button>
       <a href="/master-items.html" class="btn btn-ghost">Browse Master Items</a>
       <h2 class="text-2xl mt-4">My Inventory</h2>
+      <div class="flex flex-wrap items-center gap-3 mt-4">
+        <label>Search <input id="stock-search" type="search" class="input input-bordered"></label>
+        <label>Category <select id="stock-category" class="select select-bordered"></select></label>
+        <label>Form <select id="stock-form" class="select select-bordered"></select></label>
+      </div>
       <p id="stock-empty" class="mt-4" hidden>Your inventory is empty.</p>
       <div style="overflow:auto"><table class="table mt-4">
         <thead><tr>
@@ -66,6 +71,7 @@
           <th scope="col"><button type="button" data-sort="supplier">Supplier</button></th>
           <th scope="col"><button type="button" data-sort="stock_quantity">Stock quantity</button></th>
           <th scope="col"><button type="button" data-sort="stock_unit">Stock unit</button></th>
+          <th scope="col"><button type="button" data-sort="cost_per_gram">Cost per gram</button></th>
           <th scope="col">Actions</th>
         </tr></thead>
         <tbody id="stock"></tbody>
@@ -88,6 +94,19 @@ let loadVersion = 0;
 const headers = [...document.querySelectorAll("[data-sort]")];
 
 function sortInventory() {
+  const category = by("stock-category");
+  const form = by("stock-form");
+  const options = (select, values, title) => {
+    const current = select.value;
+    const known = [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    select.replaceChildren(new Option(title, ""), ...known.map(value => new Option(value, value)));
+    select.value = known.includes(current) ? current : "";
+  };
+  options(category, inventoryRows.map(({ item }) => item.master_items?.category), "All categories");
+  const inCategory = item => !category.value || item.master_items?.category === category.value;
+  options(form, inventoryRows.filter(({ item }) => inCategory(item)).map(({ item }) => item.master_items?.form), "All forms");
+  const term = by("stock-search").value.trim().toLowerCase();
+  let visible = 0;
   const value = item => sortKey === "name" ? item.master_items?.name : item[sortKey];
   inventoryRows.sort(({ item: left }, { item: right }) => {
     const a = value(left);
@@ -96,7 +115,14 @@ function sortInventory() {
     const comparison = ["name", "supplier", "stock_unit"].includes(sortKey) ? a.localeCompare(b) : Number(a) - Number(b);
     return direction * comparison || left.master_item_id - right.master_item_id;
   });
-  for (const { row } of inventoryRows) by("stock").append(row);
+  for (const { row, item } of inventoryRows) {
+    row.hidden = !inCategory(item) || (Boolean(form.value) && item.master_items?.form !== form.value) ||
+      ![item.master_items?.name, item.supplier].some(value => (value ?? "").toLowerCase().includes(term));
+    if (!row.hidden) visible++;
+    by("stock").append(row);
+  }
+  by("stock-empty").textContent = inventoryRows.length ? "No matching inventory items." : "Your inventory is empty.";
+  by("stock-empty").hidden = visible > 0;
   for (const button of headers) {
     const header = button.closest("th");
     if (button.dataset.sort === sortKey) header.setAttribute("aria-sort", direction === 1 ? "ascending" : "descending");
@@ -110,10 +136,25 @@ for (const button of headers) button.onclick = () => {
   sortInventory();
 };
 
+by("stock-search").addEventListener("input", sortInventory);
+by("stock-category").addEventListener("change", () => {
+  by("stock-form").value = "";
+  sortInventory();
+});
+by("stock-form").addEventListener("change", sortInventory);
+
+function displayUnitCost(item, cell) {
+  const cost = item.purchase_total_cost;
+  const grams = Number(item.purchase_weight_grams);
+  item.cost_per_gram = cost == null || !Number.isFinite(grams) || grams <= 0
+    ? null : Number((Number(cost) / grams).toFixed(6));
+  cell.textContent = item.cost_per_gram == null ? "—" : item.cost_per_gram.toFixed(6);
+}
+
 async function inventory() {
   const version = ++loadVersion;
   const { data, error } = await db.from("inventory_items")
-    .select("master_item_id,in_stock,purchase_total_cost,purchase_weight_grams,supplier,stock_quantity,stock_unit,master_items(name)")
+    .select("master_item_id,in_stock,purchase_total_cost,purchase_weight_grams,supplier,stock_quantity,stock_unit,master_items(name,category,form)")
     .order("master_item_id");
   if (version !== loadVersion || by("workspace").hidden) return;
   by("stock").replaceChildren();
@@ -147,6 +188,9 @@ async function inventory() {
     const quantity = field("Stock quantity", "quantity", "number", item.stock_quantity, "any");
     const unit = field("Stock unit", "unit", "text", item.stock_unit);
     unit.maxLength = 32;
+    const unitCost = document.createElement("td");
+    displayUnitCost(item, unitCost);
+    row.append(unitCost);
     const save = element("button", "Save");
     save.className = "btn btn-primary";
     form.append(save);
@@ -165,7 +209,11 @@ async function inventory() {
       const { data, error } = await db.from("inventory_items").update(updates)
         .eq("master_item_id", item.master_item_id).select("master_item_id").single();
       save.disabled = false;
-      if (!error && data) Object.assign(item, updates);
+      if (!error && data) {
+        Object.assign(item, updates);
+        displayUnitCost(item, unitCost);
+        sortInventory();
+      }
       tell(error || !data ? "Could not save the inventory item." : "Inventory item saved.");
     };
     const actions = document.createElement("td");

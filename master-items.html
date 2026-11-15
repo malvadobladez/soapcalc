@@ -45,7 +45,8 @@
         </nav>
   </header>
   <section class="surface-panel p-6">
-    <h1 class="text-4xl">Master Items</h1>
+    <p class="section-kicker">Master Catalog</p>
+    <h1 class="dashboard-title mt-2">The wider materia catalog.</h1>
     <p id="status" role="status">Connecting…</p>
     <form id="login" class="space-y-4 mt-4" hidden>
       <label>Email <input name="email" class="input input-bordered" type="email" autocomplete="username" required></label>
@@ -54,9 +55,26 @@
     </form>
     <div id="workspace" hidden>
       <button id="logout" type="button" class="btn btn-ghost">Sign out</button>
-      <label>Find an ingredient <input id="search" type="search" class="input input-bordered"></label>
-      <div style="overflow:auto"><table class="table mt-4"><thead><tr><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Form</th><th scope="col">Actions</th></tr></thead><tbody id="catalog"></tbody></table></div>
+      <div id="counts" class="flex flex-wrap gap-3 mt-4" aria-live="polite"></div>
+      <div class="flex flex-wrap items-center gap-3 mt-4">
+        <label>Search <input id="search" type="search" class="input input-bordered" placeholder="Search the catalog…"></label>
+        <label>Category <select id="category" class="select select-bordered"></select></label>
+        <label>Form <select id="form" class="select select-bordered"></select></label>
+        <label><input id="stock-only" type="checkbox" class="checkbox checkbox-sm"> In inventory only</label>
+        <button id="clear" type="button" class="btn btn-ghost">Lift Filters</button>
+        <button id="refresh" type="button" class="btn btn-ghost">Refresh</button>
+      </div>
+      <div style="overflow:auto">
+        <table class="table mt-4">
+          <thead><tr><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Form</th><th scope="col">Inventory</th><th scope="col">Actions</th></tr></thead>
+          <tbody id="catalog"></tbody>
+        </table>
+      </div>
       <p id="catalog-note" class="mt-4"></p>
+      <div class="flex items-center gap-3 mt-4">
+        <button id="previous" type="button" class="btn btn-ghost">Previous</button>
+        <button id="next" type="button" class="btn btn-ghost">Next</button>
+      </div>
     </div>
   </section>
 </main>
@@ -69,36 +87,110 @@ const tell = message => { by("status").textContent = message; };
 let revision = 0;
 const element = (tag, value) => { const item = document.createElement(tag); item.textContent = value; return item; };
 
-async function catalog() {
-  const request = ++revision;
-  const term = by("search").value.trim().replace(/[%_\\]/g, "");
-  let query = db.from("master_items").select("id,name,category,form").eq("is_active", true).order("name").limit(50);
-  if (term) query = query.ilike("name", "%" + term + "%");
-  const { data, error } = await query;
-  if (request !== revision || by("workspace").hidden) return;
+const pageSize = 50;
+let items = [];
+let owned = new Set();
+let page = 0;
+
+async function readPages(table, fields, order) {
+  const rows = [];
+  const chunk = 250;
+  for (let offset = 0; ; offset += chunk) {
+    const { data, error } = await db.from(table).select(fields).order(order).range(offset, offset + chunk - 1);
+    if (error) throw error;
+    rows.push(...data);
+    if (data.length < chunk) return rows;
+  }
+}
+
+function choices(select, values, label) {
+  const selected = select.value;
+  const list = [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  select.replaceChildren(new Option(label, ""), ...list.map(value => new Option(value, value)));
+  if (list.includes(selected)) select.value = selected;
+}
+
+function render() {
+  const category = by("category");
+  const form = by("form");
+  const term = by("search").value.trim().toLowerCase();
+  choices(category, items.map(item => item.category), "All categories");
+  const categoryItems = items.filter(item => !category.value || item.category === category.value);
+  choices(form, category.value ? categoryItems.map(item => item.form) : [], category.value ? "All forms" : "Choose category first");
+  form.disabled = !category.value;
+  const visible = categoryItems.filter(item =>
+    (!form.value || item.form === form.value) &&
+    (!by("stock-only").checked || owned.has(item.id)) &&
+    [item.name, item.category, item.form].some(value => value?.toLowerCase().includes(term))
+  );
+  page = Math.min(page, Math.max(0, Math.ceil(visible.length / pageSize) - 1));
+  const start = page * pageSize;
+  const counts = [
+    ["Rows", items.length], ["In Inventory", owned.size],
+    ["Active", items.filter(item => item.is_active).length], ["Visible", visible.length]
+  ];
+  by("counts").replaceChildren(...counts.map(([label, count]) => {
+    const badge = element("span", label + " " + count);
+    badge.className = "badge badge-outline";
+    return badge;
+  }));
   by("catalog").replaceChildren();
-  if (error) return tell("Could not load Master Items.");
-  by("catalog-note").textContent = data.length === 50 ? "Showing the first 50 matches. Search to narrow the list." : data.length ? "" : "No matching ingredients.";
-  for (const item of data) {
+  for (const item of visible.slice(start, start + pageSize)) {
     const row = document.createElement("tr");
-    row.append(element("td", item.name), element("td", item.category ?? "—"), element("td", item.form ?? "—"));
-    const add = element("button", "Add to my inventory");
+    const name = document.createElement("td");
+    const details = document.createElement("details");
+    details.append(element("summary", item.name));
+    details.append(element("p", item.item_class + " · " + (item.is_active ? "Active" : "Inactive")));
+    name.append(details);
+    const inInventory = owned.has(item.id);
+    row.append(name, element("td", item.category ?? "—"), element("td", item.form ?? "—"), element("td", inInventory ? "Yes" : "No"));
+    const actions = document.createElement("td");
+    const view = element("button", "View");
+    view.type = "button";
+    view.className = "btn btn-ghost";
+    view.onclick = () => { details.open = !details.open; };
+    const add = element("button", "Inventory");
     add.type = "button";
     add.className = "btn btn-ghost";
+    add.disabled = inInventory || !item.is_active;
     add.onclick = async () => {
+      const request = revision;
       add.disabled = true;
       const { error } = await db.from("inventory_items").upsert(
         { master_item_id: item.id }, { onConflict: "owner_id,master_item_id", ignoreDuplicates: true }
       );
-      add.disabled = false;
-      if (error) return tell("Could not add the ingredient.");
+      if (request !== revision || by("workspace").hidden) return;
+      if (error) { add.disabled = false; return tell("Could not add the ingredient."); }
+      owned.add(item.id);
+      render();
       tell("Ingredient is in your inventory.");
-
     };
-    const actions = document.createElement("td");
-    actions.append(add);
+    actions.append(add, view);
     row.append(actions);
     by("catalog").append(row);
+  }
+  by("catalog-note").textContent = visible.length
+    ? "Showing " + (start + 1) + "–" + Math.min(start + pageSize, visible.length) + " of " + visible.length
+    : "No matching ingredients.";
+  by("previous").disabled = page === 0;
+  by("next").disabled = start + pageSize >= visible.length;
+}
+
+async function catalog() {
+  const request = ++revision;
+  tell("Loading Master Items…");
+  try {
+    const [catalogRows, inventoryRows] = await Promise.all([
+      readPages("master_items", "id,name,category,form,item_class,is_active", "id"),
+      readPages("inventory_items", "master_item_id", "master_item_id")
+    ]);
+    if (request !== revision || by("workspace").hidden) return;
+    items = catalogRows.sort((a, b) => a.name.localeCompare(b.name));
+    owned = new Set(inventoryRows.map(row => row.master_item_id));
+    render();
+    tell("Loaded " + items.length + " master items.");
+  } catch {
+    if (request === revision) tell("Could not load Master Items and inventory status.");
   }
 }
 
@@ -106,7 +198,7 @@ function show(session) {
   by("login").hidden = Boolean(session);
   by("workspace").hidden = !session;
   if (session) { tell(""); void catalog(); }
-  else { ++revision; by("catalog").replaceChildren(); tell("Sign in to view the catalog and your inventory."); }
+  else { ++revision; items = []; owned.clear(); render(); tell("Sign in to view the catalog and your inventory."); }
 }
 
 by("login").onsubmit = async event => {
@@ -121,7 +213,17 @@ by("login").onsubmit = async event => {
   if (error) tell("Sign-in failed. Check your email and password.");
 };
 by("logout").onclick = async () => { const { error } = await db.auth.signOut(); if (error) tell("Could not sign out."); };
-by("search").addEventListener("change", catalog);
+const filter = () => { page = 0; render(); };
+by("search").addEventListener("input", filter);
+for (const id of ["category", "form", "stock-only"]) by(id).addEventListener("change", filter);
+by("clear").onclick = () => {
+  for (const id of ["search", "category", "form"]) by(id).value = "";
+  by("stock-only").checked = false;
+  filter();
+};
+by("refresh").onclick = catalog;
+by("previous").onclick = () => { page--; render(); };
+by("next").onclick = () => { page++; render(); };
 db.auth.onAuthStateChange((event, session) => {
   if (["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT"].includes(event)) setTimeout(() => show(session), 0);
 });

@@ -96,11 +96,11 @@
       <div id="counts" class="catalog-counts" aria-live="polite" hidden></div>
     </div>
     <p id="status" role="status">Connecting…</p>
-    <form id="login" class="space-y-4 mt-4" hidden>
-      <label>Email <input name="email" class="input input-bordered" type="email" autocomplete="username" required></label>
-      <label>Password <input name="password" class="input input-bordered" type="password" autocomplete="current-password" required></label>
-      <button class="btn btn-primary">Sign in</button>
-      <a href="/signup.html" class="btn btn-ghost rounded-full">Create account</a>
+    <form id="login" class="grimoire-login mt-4" hidden>
+      <label>Email <input name="email" class="input input-bordered rounded-full" type="email" autocomplete="username" required></label>
+      <label>Password <input name="password" class="input input-bordered rounded-full" type="password" autocomplete="current-password" required></label>
+      <button class="btn btn-primary rounded-full">Sign in</button>
+      <a href="/signup.html" class="btn btn-ghost grimoire-account-pill">Create account</a>
     </form>
     <div id="workspace" hidden>
       <div class="catalog-toolbar">
@@ -135,16 +135,16 @@
           <p class="section-kicker">Inventory Handoff</p>
           <h2 id="handoff-title" class="text-2xl"></h2>
           <div class="entry-grid">
-            <label>Supplier <input class="input input-bordered" name="supplier" maxlength="120"></label>
-            <label>Manufacturer <input class="input input-bordered" name="manufacturer" maxlength="120"></label>
-            <label>Purchase cost <input class="input input-bordered" name="purchase_total_cost" type="number" min="0" max="99999999.99" step=".01"></label>
-            <label>Purchase amount <input class="input input-bordered" name="purchase_quantity" type="number" min=".0001" max="9999999999.9999" step=".0001"></label>
+            <label>Supplier <input class="input input-bordered rounded-full" name="supplier" maxlength="120"></label>
+            <label>Manufacturer <input class="input input-bordered rounded-full" name="manufacturer" maxlength="120"></label>
+            <label>Purchase cost <input class="input input-bordered rounded-full" name="purchase_total_cost" type="number" min="0" max="99999999.99" step=".01"></label>
+            <label>Purchase amount <input class="input input-bordered rounded-full" name="purchase_quantity" type="number" min=".0001" max="9999999999.9999" step=".0001"></label>
             <label>Purchase unit <select class="select select-bordered" name="purchase_unit">
               <option value="">Choose a unit</option><option value="g">Grams</option><option value="kg">Kilograms</option>
               <option value="ml">Millilitres</option><option value="l">Litres</option><option value="oz">Ounces</option>
               <option value="fl oz">Fluid ounces</option><option value="lb">Pounds</option><option value="each">Each</option>
             </select></label>
-            <label>Markup % <input class="input input-bordered" name="markup_percent" type="number" min="0" max="99999.99" step=".01" value="0"></label>
+            <label>Markup % <input class="input input-bordered rounded-full" name="markup_percent" type="number" min="0" max="99999.99" step=".01" value="0"></label>
           </div>
           <p id="handoff-status" role="status"></p>
           <button type="submit" class="btn btn-primary">Add to Inventory</button>

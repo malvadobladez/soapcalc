@@ -222,6 +222,27 @@ const sources = {
   ]
 };
 
+function herbalProductName(title: string, form: string) {
+  const raw = title.trim().replace(/\s+/g, " ");
+  const cutPrefix = /^cut\s*(?:&|and)?\s*sifted\s+/i;
+  const cutSuffix = /(?:^|[\s,;:–—-]+|(?=[([]))[(\[]?(?:c\s*\/\s*s|c\.?\s*s\.?|cut\s*(?:&|and)?\s*sifted)[)\]]?$/i;
+  const wholeSuffix = /(?:^|[\s,;:–—-]+|(?=[([]))[(\[]?whole[)\]]?(?:\s*[(\[][^\])]*[)\]])?$/i;
+  const clean = value => value.trim().replace(/^[\s,;:–—-]+|[\s,;:–—-]+$/g, "");
+  if (form === "Tea") return { name: raw, conflict: false };
+  let name = raw;
+  let cut = false;
+  let whole = false;
+  for (;;) {
+    const withoutCut = clean(name.replace(cutPrefix, "").replace(cutSuffix, ""));
+    const withoutWhole = clean(withoutCut.replace(wholeSuffix, ""));
+    cut ||= withoutCut !== name;
+    whole ||= withoutWhole !== withoutCut;
+    if (withoutWhole === name) break;
+    name = withoutWhole;
+  }
+  return { name, conflict: !name || (cut && form !== "Cut/Sifted") || (whole && form !== "Whole Flower") };
+}
+
 async function supplierProducts(source, herbal: boolean) {
   const listing = new URL(source.url);
   const products = new Map();
@@ -238,7 +259,9 @@ async function supplierProducts(source, herbal: boolean) {
       if (!Array.isArray(rows)) throw new Error("Invalid supplier response");
       for (const row of rows) {
         if (typeof row.title === "string" && /^[a-z0-9-]+$/i.test(row.handle)) {
-          products.set(row.handle, { name: row.title.trim(), url: new URL("/products/" + row.handle, listing).href });
+          const { name, conflict } = herbalProductName(row.title, source.form);
+          products.set(row.handle, { name, raw_name:row.title.trim(), conflict, category:"Herb",
+            form:source.form, url:new URL("/products/" + row.handle, listing).href });
         }
       }
       if (rows.length === 250) pages.add(String(visited + 1));
@@ -259,7 +282,7 @@ async function supplierProducts(source, herbal: boolean) {
     }
   }
   if (!products.size) throw new Error("No products found");
-  return [...products.values()].filter(item => item.name && item.name.length <= 255);
+  return [...products.values()].filter(item => item.conflict || (item.name && item.name.length <= 255));
 }
 
 async function previewMetadata(id, url: string, anon: string, auth: string) {

@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/static/css/app.css">
   <link rel="stylesheet" href="/static/css/grimoire-account.css">
-<link rel="stylesheet" href="/static/css/apothecary-table.css">
+<link rel="stylesheet" href="/static/css/apothecary-table.css?v=shared-toolbar">
 <style>
     .grimoire-nav { display:flex; flex-wrap:wrap; gap:.25rem .75rem; }
     .grimoire-nav a { padding:.3rem .5rem; text-decoration:underline; text-underline-offset:.2em; }
@@ -45,18 +45,19 @@
         </nav>
   </header>
   <section class="surface-panel p-6">
-    <h1 class="text-4xl">My Apothecary</h1>
+    <p class="section-kicker">Personal Inventory</p>
+    <h1 class="dashboard-title mt-2">My Apothecary</h1>
+    <p class="mt-2 text-neutral/75">Keep track of the oils, herbs, scents, and other materials on your shelves. Open an ingredient to see its properties, or edit its stock, supplier, and costs.</p>
     <p id="status" role="status">Connecting…</p>
 
     <div id="workspace" hidden>
-      <a href="/apothecary-catalog" class="btn btn-ghost rounded-full" title="Browse the shared Apothecary Catalog">Browse Apothecary Catalog</a>
-      <h2 class="text-2xl mt-4">Inventory</h2>
-      <div class="flex flex-wrap items-center gap-3 mt-4">
-        <label>Search <input id="stock-search" type="search" class="input input-bordered"></label>
-        <label>Category <select id="stock-category" class="select select-bordered"></select></label>
-        <label>Form <select id="stock-form" class="select select-bordered"></select></label>
+      <div class="catalog-toolbar">
+        <input id="stock-search" type="search" class="input input-bordered bg-base-100" aria-label="Search My Apothecary" placeholder="Search My Apothecary…">
+        <select id="stock-category" class="select select-bordered bg-base-100" aria-label="Category"></select>
+        <select id="stock-form" class="select select-bordered bg-base-100" aria-label="Form"></select>
+        <label class="catalog-stock"><input id="show-retired" type="checkbox" class="checkbox checkbox-sm"> Show retired items</label>
+        <a href="/apothecary-catalog" class="btn btn-primary rounded-full" title="Browse the shared catalog and add ingredients to My Apothecary">Browse Apothecary Catalog</a>
       </div>
-      <label class="block mt-4"><input id="show-retired" type="checkbox" class="checkbox checkbox-sm"> Show retired items</label>
       <p id="stock-empty" class="mt-4" hidden>Your inventory is empty.</p>
       <div class="catalog-scroll mt-4"><table class="table catalog-grid">
         <thead><tr>

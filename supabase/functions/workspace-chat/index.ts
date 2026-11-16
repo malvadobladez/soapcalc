@@ -25,8 +25,8 @@ Deno.serve(async (request: Request) => {
     }
     if (!userResponse.ok) return json(503, { error: "auth_unavailable" });
     const user = await userResponse.json();
-    if (!user.email_confirmed_at || user.app_metadata?.catalog_admin !== true) {
-      return json(403, { error: "catalog_admin_required" });
+    if (!user.email_confirmed_at) {
+      return json(403, { error: "verified_email_required" });
     }
     const body = await request.text();
     if (body.length > 16000) return json(413, { error: "message_too_large" });

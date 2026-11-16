@@ -16,6 +16,11 @@ if (host) {
   const account = document.createElement("div");
   account.className = "grimoire-account";
   account.hidden = true;
+  const signIn = document.createElement("a");
+  signIn.href = "/master-items.html#login";
+  signIn.className = "grimoire-account-pill font-semibold";
+  signIn.textContent = "Sign in";
+  signIn.hidden = true;
   const profile = document.createElement("a");
   profile.href = "/profile.html";
   profile.title = "Open my profile";
@@ -27,7 +32,7 @@ if (host) {
   const status = document.createElement("p");
   status.setAttribute("role", "status");
   status.hidden = true;
-  account.append(profile, logout);
+  account.append(profile, logout, signIn);
   line.append(label, account);
   host.prepend(line, status);
 
@@ -37,7 +42,9 @@ if (host) {
     const name = [metadata.display_name, metadata.full_name, metadata.name]
       .find(value => typeof value === "string" && value.trim());
     profile.textContent = user ? name?.trim() || user.email || "Signed in" : "";
-    account.hidden = !user;
+    account.hidden = false;
+    profile.hidden = logout.hidden = !user;
+    signIn.hidden = Boolean(user);
   });
   logout.onclick = async () => {
     logout.disabled = true;

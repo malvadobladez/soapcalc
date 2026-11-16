@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en" data-theme="brenda">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My profile | The Hidden Grimoire</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <style>
+    main { width:min(calc(100% - 2rem),42rem); margin:2rem auto; }
+    label { display:grid; gap:.3rem; }
+    nav { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+  </style>
+</head>
+<body class="antialiased">
+  <main class="surface-panel p-6">
+    <nav aria-label="Workspace">
+      <a href="/" class="btn btn-ghost rounded-full">Overview</a>
+      <a href="/master-items.html" class="btn btn-ghost rounded-full">Master Items</a>
+      <a href="/stores.html" class="btn btn-ghost rounded-full">Inventory</a>
+    </nav>
+    <p class="section-kicker">The Living Grimoire</p>
+    <h1 class="dashboard-title mt-2">My profile</h1>
+    <form class="space-y-4 mt-4" hidden>
+      <label>Display name <input class="input input-bordered" name="display_name" autocomplete="nickname" maxlength="100"></label>
+      <label>Verified sign-in email <input class="input input-bordered" name="login_email" type="email" readonly></label>
+      <label>Contact email <input class="input input-bordered" name="contact_email" type="email" autocomplete="email" maxlength="254"></label>
+      <label>Phone <input class="input input-bordered" name="contact_phone" type="tel" autocomplete="tel" maxlength="40"></label>
+      <button type="submit" class="btn btn-primary rounded-full">Save profile</button>
+      <button id="logout" type="button" class="btn btn-ghost rounded-full">Sign out</button>
+    </form>
+    <p id="sign-in" class="mt-4" hidden><a href="/master-items.html" class="btn btn-primary rounded-full">Sign in</a></p>
+    <p id="message" class="mt-4" role="status"></p>
+  </main>
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm";
+const db = createClient("https://dfuanosyewsimvhdparf.supabase.co", "sb_publishable_biDbT_ZmXynIVLrgukrz5g_ZBTk84T7");
+    const message = document.getElementById("message");
+    const form = document.querySelector("form");
+    function show(user) {
+      form.hidden = !user;
+      document.getElementById("sign-in").hidden = Boolean(user);
+      if (!user) { form.reset(); return; }
+      const profile = user.user_metadata ?? {};
+      form.elements.login_email.value = user.email ?? "";
+      form.elements.display_name.value = profile.display_name ?? profile.full_name ?? profile.name ?? "";
+      form.elements.contact_email.value = profile.contact_email ?? "";
+      form.elements.contact_phone.value = profile.contact_phone ?? "";
+    }
+    db.auth.onAuthStateChange((event, session) => {
+      if (["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT"].includes(event)) show(session?.user);
+    });
+    form.onsubmit = async event => {
+      event.preventDefault();
+      const button = form.querySelector('[type="submit"]');
+      const fields = new FormData(form);
+      button.disabled = true;
+      try {
+        const data = Object.fromEntries(["display_name", "contact_email", "contact_phone"].map(key => [key, fields.get(key).trim()]));
+        const result = await db.auth.updateUser({ data });
+        if (result.error) throw result.error;
+        message.textContent = "Profile saved.";
+      } catch { message.textContent = "Could not save your profile. Try again."; }
+      finally { button.disabled = false; }
+    };
+    document.getElementById("logout").onclick = async () => {
+      const result = await db.auth.signOut();
+      message.textContent = result.error ? "Could not sign out. Try again." : "Signed out.";
+    };
+  </script>
+</body>
+</html>

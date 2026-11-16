@@ -566,6 +566,7 @@ async function openPreview(payload, title, supplier) {
     if (!active()) return;
     if (error) throw error;
     const choices = [];
+    let conflicts = 0;
     const add = (text, value) => {
       const input = document.createElement("input");
       input.type = "checkbox";
@@ -583,16 +584,25 @@ async function openPreview(payload, title, supplier) {
         if (suggested && suggested !== current) add(label + " · Current: " + (current ?? "—") + " · Suggested: " + suggested, [field,suggested]);
       }
     } else {
-      const known = new Set(items.map(item => item.name.trim().toLowerCase()));
+      const nameKey = name => name.trim().replace(/\s+/g, " ").toLowerCase();
+      const known = new Set(items.map(item => nameKey(item.name)));
       for (const product of data.products) {
-        const key = product.name.toLowerCase();
-        if (known.has(key)) continue;
+        if (product.conflict) { conflicts++; continue; }
+        const key = nameKey(product.name);
+        const rawKey = nameKey(product.raw_name ?? product.name);
+        if (known.has(key) || known.has(rawKey)) continue;
         known.add(key);
-        add(product.name, { name:product.name, category:supplier.category, item_class:supplier.category,
-          form:supplier.form, is_active:true, metadata:{ source:"vendor-sync", supplier_url:product.url } });
+        known.add(rawKey);
+        const category = product.category ?? supplier.category;
+        const form = product.form ?? supplier.form;
+        const renamed = product.raw_name && product.raw_name !== product.name;
+        add(product.name + " · " + category + " · " + form + (renamed ? " (supplier: " + product.raw_name + ")" : ""),
+          { name:product.name, category, item_class:category,
+          form, is_active:true, metadata:{ source:"vendor-sync", supplier_url:product.url } });
       }
     }
     opsStatus.textContent = choices.length ? "Select the changes to apply." : "No new suggestions or products.";
+    if (conflicts) opsStatus.textContent += " Skipped " + conflicts + " supplier titles with conflicting or missing names.";
     opsApply.hidden = !choices.length;
     opsApply.onclick = async () => {
       if (!active() || opsApply.disabled) return;

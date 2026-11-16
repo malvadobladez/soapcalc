@@ -21,7 +21,7 @@ export function bindSignup(form, message) {
       const { error } = await db.auth.signUp({
         email: fields.get("email").trim().toLowerCase(),
         password: fields.get("password"),
-        options: { data: { display_name: displayName } }
+        options: { emailRedirectTo: "https://soapcalc.dacruz.ca/", data: { display_name: displayName } }
       });
       if (error && !["user_already_exists", "email_exists"].includes(error.code)) throw error;
       form.reset();

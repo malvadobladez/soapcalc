@@ -1,6 +1,13 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm";
 export const db = createClient("https://dfuanosyewsimvhdparf.supabase.co", "sb_publishable_biDbT_ZmXynIVLrgukrz5g_ZBTk84T7");
 
+const blockedDisplayWords = new Set(["fuck", "fucking", "fucker", "motherfucker", "shit", "bullshit", "bitch", "cunt", "asshole", "dickhead", "whore", "slut"]);
+
+export function hasVulgarDisplayName(name) {
+  const words = name.normalize("NFKC").toLowerCase().replace(/\p{Cf}/gu, "").match(/[\p{L}\p{N}]+/gu) ?? [];
+  return words.some(word => blockedDisplayWords.has(word));
+}
+
 export function bindSignup(form, message) {
   form.onsubmit = async event => {
     event.preventDefault();
@@ -8,6 +15,7 @@ export function bindSignup(form, message) {
     const fields = new FormData(form);
     const displayName = fields.get("display_name").trim();
     if (!displayName) { message.textContent = "Enter a display name."; return; }
+    if (hasVulgarDisplayName(displayName)) { message.textContent = "Choose a display name without vulgar language."; return; }
     button.disabled = true;
     try {
       const { error } = await db.auth.signUp({

@@ -1,6 +1,28 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm";
 export const db = createClient("https://dfuanosyewsimvhdparf.supabase.co", "sb_publishable_biDbT_ZmXynIVLrgukrz5g_ZBTk84T7");
 
+export function bindSignup(form, message) {
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const button = form.querySelector('[type="submit"]');
+    const fields = new FormData(form);
+    const displayName = fields.get("display_name").trim();
+    if (!displayName) { message.textContent = "Enter a display name."; return; }
+    button.disabled = true;
+    try {
+      const { error } = await db.auth.signUp({
+        email: fields.get("email").trim().toLowerCase(),
+        password: fields.get("password"),
+        options: { data: { display_name: displayName } }
+      });
+      if (error && !["user_already_exists", "email_exists"].includes(error.code)) throw error;
+      form.reset();
+      message.textContent = "If this address can be registered, check your inbox for a verification link. If you already verified this email, sign in.";
+    } catch { message.textContent = "Could not submit signup. Check your details or try again shortly."; }
+    finally { button.disabled = false; }
+  };
+}
+
 const host = document.querySelector("[data-grimoire-header]");
 if (host) {
   const line = document.createElement("div");
@@ -44,14 +66,15 @@ if (host) {
       <p role="status"></p>
       <div class="flex flex-wrap gap-3">
         <button type="submit" class="btn btn-primary rounded-full">Sign in</button>
-        <a href="/signup.html" class="grimoire-account-pill">Create account</a>
+        <button type="button" data-create-account class="grimoire-account-pill">Create account</button>
         <button type="button" class="btn btn-ghost rounded-full">Cancel</button>
       </div>
     </form>`;
   const form = dialog.querySelector("form");
   const feedback = form.querySelector('[role="status"]');
   const submit = form.querySelector('[type="submit"]');
-  const cancel = form.querySelector('[type="button"]');
+  const createAccount = form.querySelector("[data-create-account]");
+  const cancel = form.querySelector('button[type="button"]:not([data-create-account])');
   dialog.addEventListener("close", () => { form.reset(); feedback.textContent = ""; });
   signIn.onclick = () => dialog.showModal();
   cancel.onclick = () => dialog.close();
@@ -60,7 +83,7 @@ if (host) {
     event.preventDefault();
     if (submit.disabled) return;
     const fields = new FormData(form);
-    submit.disabled = cancel.disabled = true;
+    submit.disabled = cancel.disabled = createAccount.disabled = true;
     feedback.textContent = "";
     try {
       const { error } = await db.auth.signInWithPassword({
@@ -73,9 +96,38 @@ if (host) {
       } else dialog.close();
     } catch {
       feedback.textContent = "Could not sign in. Try again.";
-    } finally { submit.disabled = cancel.disabled = false; }
+    } finally { submit.disabled = cancel.disabled = createAccount.disabled = false; }
   };
-  document.body.append(dialog);
+  const signup = document.createElement("dialog");
+  signup.className = dialog.className;
+  signup.style.cssText = dialog.style.cssText;
+  signup.setAttribute("aria-labelledby", "grimoire-signup-title");
+  signup.innerHTML = `<h2 id="grimoire-signup-title" class="text-2xl">Create account</h2>
+    <p class="mt-2">Verify your email before signing in.</p>
+    <form class="space-y-4 mt-4">
+      <label>Display name <input class="input input-bordered rounded-full w-full" name="display_name" autocomplete="nickname" required maxlength="100"></label>
+      <label>Email <input class="input input-bordered rounded-full w-full" name="email" type="email" autocomplete="email" required maxlength="254"></label>
+      <label>Password <input class="input input-bordered rounded-full w-full" name="password" type="password" autocomplete="new-password" required minlength="8"></label>
+      <button type="submit" class="btn btn-primary rounded-full">Create account</button>
+    </form>
+    <p class="mt-4" role="status"></p>
+    <button type="button" class="btn btn-ghost rounded-full mt-2">Back to sign in</button>`;
+  const signupForm = signup.querySelector("form");
+  const signupStatus = signup.querySelector('[role="status"]');
+  const signupBusy = () => signupForm.querySelector('[type="submit"]').disabled;
+  bindSignup(signupForm, signupStatus);
+  createAccount.onclick = () => {
+    dialog.close();
+    signup.showModal();
+  };
+  signup.querySelector('[type="button"]').onclick = () => {
+    if (signupBusy()) return;
+    signup.close();
+    dialog.showModal();
+  };
+  signup.addEventListener("cancel", event => { if (signupBusy()) event.preventDefault(); });
+  signup.addEventListener("close", () => { signupForm.reset(); signupStatus.textContent = ""; });
+  document.body.append(dialog, signup);
   account.append(profile, logout, signIn);
   line.append(label, account);
   host.prepend(line, status);
@@ -90,6 +142,7 @@ if (host) {
     profile.hidden = logout.hidden = !user;
     signIn.hidden = Boolean(user);
     if (user && dialog.open) dialog.close();
+    if (user && signup.open) signup.close();
   });
   logout.onclick = async () => {
     logout.disabled = true;

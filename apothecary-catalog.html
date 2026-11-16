@@ -597,13 +597,19 @@ async function openPreview(payload, title, supplier) {
     if (error) throw error;
     const choices = [];
     let conflicts = 0;
-    const add = (text, value) => {
+    const add = (text, value, originalTitle) => {
       const input = document.createElement("input");
       input.type = "checkbox";
       input.className = "checkbox checkbox-sm";
       const label = document.createElement("label");
       label.className = "flex items-start gap-2 mb-2";
-      label.append(input, document.createTextNode(text));
+      const copy = element("span", text);
+      if (originalTitle) {
+        const detail = element("small", "Original supplier title: " + originalTitle);
+        detail.className = "block text-neutral/75";
+        copy.append(detail);
+      }
+      label.append(input, copy);
       opsChoices.append(label);
       choices.push({ input, value });
     };
@@ -626,9 +632,9 @@ async function openPreview(payload, title, supplier) {
         const category = product.category ?? supplier.category;
         const form = product.form ?? supplier.form;
         const renamed = product.raw_name && product.raw_name !== product.name;
-        add(product.name + " · " + category + " · " + form + (renamed ? " (supplier: " + product.raw_name + ")" : ""),
+        add(product.name + " · " + category + " · " + form,
           { name:product.name, category, item_class:category,
-          form, is_active:true, metadata:{ source:"vendor-sync", supplier_url:product.url } });
+          form, is_active:true, metadata:{ source:"vendor-sync", supplier_url:product.url } }, renamed ? product.raw_name : null);
       }
     }
     opsStatus.textContent = choices.length ? "Select the changes to apply." : "No new suggestions or products.";

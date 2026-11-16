@@ -72,6 +72,30 @@ export async function viewItem(item, panel) {
   const date = value => value?.slice(0, 10);
   append(footer, "span", [["Confidence", d.confidence], ["Source", d.source],
     ["Last refresh", date(d.metadata_updated_at)], ["Created", date(d.created_at)], ["ID", d.id]]);
+  const suppliers = {
+    "serenityuniverse.com": "Serenity Universe",
+    "candorasoap.ca": "Candora Soap"
+  };
+  let productUrl;
+  try {
+    const url = new URL(d.supplier_url);
+    if (url.protocol === "https:" && !url.username && !url.password) productUrl = url;
+  } catch {}
+  const supplierHost = productUrl?.hostname.replace(/^www\./, "");
+  const sourceHost = Object.keys(suppliers).find(host => host.split(".")[0] === String(d.source ?? "").toLowerCase());
+  const host = Object.hasOwn(suppliers, supplierHost) ? supplierHost : sourceHost;
+  function supplierLink(label, href, name) {
+    const line = element("span", "");
+    const link = element("a", name);
+    link.href = href;
+    link.className = "underline";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    line.append(element("strong", label + ": "), link);
+    footer.append(line);
+  }
+  if (host) supplierLink("Supplier", "https://" + host, suppliers[host]);
+  if (productUrl) supplierLink("Product", productUrl.href, "View supplier listing");
   if (grid.childElementCount) panel.append(grid);
   if (footer.childElementCount) panel.append(footer);
 }

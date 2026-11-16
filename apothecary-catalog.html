@@ -73,7 +73,7 @@
         <input id="search" type="search" class="input input-bordered bg-base-100" aria-label="Search the catalog" placeholder="Search the catalog…">
         <select id="category" class="select select-bordered bg-base-100" aria-label="Category"></select>
         <select id="form" class="select select-bordered bg-base-100" aria-label="Form"></select>
-        <label class="catalog-stock"><input id="stock-only" type="checkbox" class="checkbox checkbox-sm"> In inventory only</label>
+        <label class="catalog-stock"><input id="stock-only" type="checkbox" class="checkbox checkbox-sm"> In My Apothecary only</label>
         <button id="clear" title="Clear search and filters" type="button" class="btn btn-ghost rounded-full">Lift Filters</button>
         <button id="refresh" title="Reload the catalog and your inventory status" type="button" class="btn btn-ghost rounded-full">Refresh</button>
         <div id="catalog-admin" class="catalog-admin-actions" hidden>
@@ -144,7 +144,7 @@ const element = (tag, value) => { const item = document.createElement(tag); item
 const pageSize = 50;
 
 let items = [];
-let owned = new Set();
+let owned = new Map();
 let page = 0;
 let sortKey = "name";
 let sortDirection = 1;
@@ -251,16 +251,7 @@ by("edit-form").onsubmit = async event => {
   await catalog();
 };
 
-async function readPages(table, fields, order) {
-  const rows = [];
-  const chunk = 250;
-  for (let offset = 0; ; offset += chunk) {
-    const { data, error } = await db.from(table).select(fields).order(order).range(offset, offset + chunk - 1);
-    if (error) throw error;
-    rows.push(...data);
-    if (data.length < chunk) return rows;
-  }
-}
+import { readPages } from "/static/js/read-pages.js";
 
 function choices(select, values, label) {
   const selected = select.value;
@@ -302,7 +293,7 @@ function render() {
   page = Math.min(page, Math.max(0, Math.ceil(visible.length / pageSize) - 1));
   const start = page * pageSize;
   const counts = [
-    ["Total items", items.length], ["In Inventory", owned.size],
+    ["Total items", items.length], ["In My Apothecary", owned.size],
     ["Active", items.filter(item => item.is_active).length], ["Matching filters", visible.length]
   ];
   by("counts").replaceChildren(...counts.map(([label, count]) => {
@@ -350,7 +341,8 @@ function render() {
     }
     name.append(toggle);
     const inInventory = owned.has(item.id);
-    row.append(name, element("td", item.category ?? "—"), element("td", item.form ?? "—"), element("td", inInventory ? "Yes" : "No"));
+    const retired = owned.get(item.id) === false;
+    row.append(name, element("td", item.category ?? "—"), element("td", item.form ?? "—"), element("td", retired ? "Retired" : inInventory ? "Yes" : "No"));
     const actions = document.createElement("td");
     const view = element("button", "View");
     view.title = "Show or hide ingredient values and notes below this row";
@@ -364,7 +356,15 @@ function render() {
     add.title = inInventory ? "Already in your inventory" : !item.is_active
       ? "Inactive catalog items cannot be added" : "Enter purchase details and add this item to your inventory";
     add.onclick = () => openHandoff(item);
-    actions.append(add, view);
+    if (retired) {
+      const restore = element("a", "View Retired Item");
+      restore.href = "/my-apothecary?retired=" + encodeURIComponent(item.name);
+      restore.className = "btn btn-ghost";
+      restore.title = "Open My Apothecary to restore this ingredient";
+      actions.append(restore, view);
+    } else {
+      actions.append(add, view);
+    }
     if (admin) {
       const modify = element("button", "Edit");
     modify.title = "Edit this shared catalog entry";
@@ -389,11 +389,11 @@ async function catalog() {
   try {
     const [catalogRows, inventoryRows] = await Promise.all([
       readPages("master_items", "id,name,category,form,item_class,is_active", "id"),
-      readPages("inventory_items", "master_item_id", "master_item_id")
+      readPages("inventory_items", "master_item_id,is_active", "master_item_id")
     ]);
     if (request !== revision || by("workspace").hidden) return;
     items = catalogRows.sort((a, b) => a.name.localeCompare(b.name));
-    owned = new Set(inventoryRows.map(row => row.master_item_id));
+    owned = new Map(inventoryRows.map(row => [row.master_item_id, row.is_active]));
     render();
     tell("");
   } catch {
@@ -442,7 +442,7 @@ handoffForm.onsubmit = async event => {
     }, { onConflict: "owner_id,master_item_id", ignoreDuplicates: true });
     if (request !== revision || !handoff.open) return;
     if (error) throw error;
-    owned.add(item.id);
+    owned.set(item.id, true);
     handoff.close();
     render();
     tell("Ingredient is in your inventory.");

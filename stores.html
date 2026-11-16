@@ -46,12 +46,7 @@
   <section class="surface-panel p-6">
     <h1 class="text-4xl">The Stores</h1>
     <p id="status" role="status">Connecting…</p>
-    <form id="login" class="grimoire-login mt-4" hidden>
-      <label>Email <input name="email" class="input input-bordered rounded-full" type="email" autocomplete="username" required></label>
-      <label>Password <input name="password" class="input input-bordered rounded-full" type="password" autocomplete="current-password" required></label>
-      <button class="btn btn-primary rounded-full">Sign in</button>
-      <a href="/signup.html" class="btn btn-ghost grimoire-account-pill">Create account</a>
-    </form>
+
     <div id="workspace" hidden>
       <a href="/master-items.html" class="btn btn-ghost">Browse Master Items</a>
       <h2 class="text-2xl mt-4">My Inventory</h2>
@@ -293,23 +288,12 @@ async function inventory() {
 }
 
 function show(session) {
-  by("login").hidden = Boolean(session);
+
   by("workspace").hidden = !session;
   if (session) { tell(""); void inventory(); }
   else { ++loadVersion; inventoryRows = []; by("stock").replaceChildren(); tell("Sign in to view the catalog and your inventory."); }
 }
 
-by("login").onsubmit = async event => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const fields = new FormData(form);
-  const button = form.querySelector("button");
-  button.disabled = true;
-  const { error } = await db.auth.signInWithPassword({ email: fields.get("email"), password: fields.get("password") });
-  button.disabled = false;
-  form.reset();
-  if (error) tell("Sign-in failed. Check your email and password.");
-};
 
 db.auth.onAuthStateChange((event, session) => {
   if (["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT"].includes(event)) setTimeout(() => show(session), 0);

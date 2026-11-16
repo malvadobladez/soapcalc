@@ -1,3 +1,4 @@
+import { mountGrimoireChat } from "./grimoire-chat.js";
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm";
 export const db = createClient("https://dfuanosyewsimvhdparf.supabase.co", "sb_publishable_biDbT_ZmXynIVLrgukrz5g_ZBTk84T7");
 
@@ -37,6 +38,7 @@ export function bindSignup(form, message) {
 
 const host = document.querySelector("[data-grimoire-header]");
 if (host) {
+  mountGrimoireChat(db);
   const line = document.createElement("div");
   line.className = "grimoire-header-line";
   const label = document.createElement("div");

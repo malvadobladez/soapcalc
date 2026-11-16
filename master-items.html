@@ -6,6 +6,7 @@
 <title>Master Items | The Hidden Grimoire</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/grimoire-account.css">
 <style>
     .grimoire-nav { display:flex; flex-wrap:wrap; gap:.25rem .75rem; }
     .grimoire-nav a { padding:.3rem .5rem; text-decoration:underline; text-underline-offset:.2em; }
@@ -54,10 +55,10 @@
     .catalog-stock { border-radius:1rem; padding:.65rem .85rem; white-space:nowrap; }
     #status { margin-top:.65rem; color:var(--color-neutral); }
     @media(max-width:540px) { .catalog-toolbar input[type=search],.catalog-toolbar select { flex-basis:100%; } }
-      .grimoire-header-line { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; }
-    .grimoire-account { display:flex; flex-wrap:wrap; align-items:center; gap:.55rem; min-width:0; }
-    .grimoire-account[hidden] { display:none; }
-    .grimoire-account .catalog-pill { color:var(--color-base-content); background:var(--color-base-200); white-space:normal; overflow-wrap:anywhere; }
+
+
+
+
   </style>
 </head>
 <body class="app-shell antialiased">
@@ -79,17 +80,7 @@
       </div>
     </aside>
 <main class="workspace-main">
-  <header class="surface-panel px-5 py-4">
-    <div class="grimoire-header-line">
-      <div>
-        <p class="section-kicker">The Living Grimoire</p>
-        <p class="text-xl font-semibold">Master Items</p>
-      </div>
-      <div id="header-account" class="grimoire-account" hidden>
-        <a id="display-name" href="/profile.html" class="catalog-pill" title="Open my profile"></a>
-        <button id="logout" type="button" class="btn btn-ghost rounded-full catalog-pill">Sign out</button>
-      </div>
-    </div>
+  <header class="surface-panel px-5 py-4" data-grimoire-header="Master Items">
     <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace">
           <a href="/">Overview</a><a href="/stores.html">Inventory</a><a href="/master-items.html" aria-current="page">Master Items</a>
           <a href="/#leaves">Tea recipes</a><a href="/#calculus">Soap calculator</a>
@@ -176,8 +167,7 @@
 </main>
 </div>
 <script type="module">
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm";
-const db = createClient("https://dfuanosyewsimvhdparf.supabase.co", "sb_publishable_biDbT_ZmXynIVLrgukrz5g_ZBTk84T7");
+import { db } from "/static/js/grimoire-account.js";
 const by = id => document.getElementById(id);
 const tell = message => { by("status").textContent = message; };
 let revision = 0;
@@ -568,12 +558,6 @@ handoffForm.onsubmit = async event => {
 };
 
 function show(session) {
-  const user = session?.user;
-  const profile = user?.user_metadata ?? {};
-  const displayName = [profile.display_name, profile.full_name, profile.name]
-    .find(value => typeof value === "string" && value.trim());
-  by("display-name").textContent = user ? (displayName?.trim() || user.email || "Signed in") : "";
-  by("header-account").hidden = !user;
   by("counts").hidden = !session;
   if (!session) handoff.close();
   admin = session?.user.app_metadata?.catalog_admin === true;
@@ -596,7 +580,7 @@ by("login").onsubmit = async event => {
   form.reset();
   if (error) tell("Sign-in failed. Check your email and password.");
 };
-by("logout").onclick = async () => { const { error } = await db.auth.signOut(); if (error) tell("Could not sign out."); };
+
 const filter = () => { page = 0; render(); };
 by("search").addEventListener("input", filter);
 for (const id of ["category", "form", "stock-only"]) by(id).addEventListener("change", filter);

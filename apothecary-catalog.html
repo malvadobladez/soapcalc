@@ -45,7 +45,11 @@
     .entry-grid input, .entry-grid select { width:100%; min-width:0; }
     .entry-grid #name-field { grid-column:1/-1; }
     @media(max-width:540px) { .entry-grid { grid-template-columns:1fr; } }
-      .catalog-heading { display:flex; flex-wrap:wrap; align-items:end; justify-content:space-between; gap:1rem; }
+      .catalog-heading { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:.75rem 1rem; }
+    .catalog-heading .catalog-counts { justify-content:flex-end; }
+    @media(max-width:1000px) {
+      .catalog-heading { grid-template-columns:minmax(0,1fr); }
+    }
     .catalog-counts,.catalog-toolbar,.catalog-admin-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.65rem; }
     .catalog-counts[hidden],.catalog-admin-actions[hidden] { display:none; }
     .catalog-pill,.catalog-stock { display:inline-flex; align-items:center; gap:.65rem; border:1px solid var(--color-base-300); background:var(--color-base-200); }
@@ -110,7 +114,7 @@
         <div id="catalog-admin" class="catalog-admin-actions" hidden>
           <button id="bulk-edit" title="Enter or exit bulk editing" type="button" class="btn btn-secondary rounded-full">Bulk Edit</button>
           <button id="new-item" title="Create a shared catalog entry" type="button" class="btn btn-primary rounded-full">Add to the Catalog</button>
-          <button id="gpt-check" type="button" class="btn btn-ghost rounded-full">Test GPT connection</button>
+
           <button id="edit-selected" title="Edit the selected catalog entries" type="button" class="btn btn-primary rounded-full" hidden>Edit selected</button>
         </div>
       </div>
@@ -555,22 +559,6 @@ handoffForm.onsubmit = async event => {
   }
 };
 
-by("gpt-check").onclick = async () => {
-  const button = by("gpt-check");
-  button.disabled = true;
-  tell("Checking GPT connection…");
-  try {
-    const { data, error } = await db.functions.invoke("gpt-connection", { method: "POST", body: {} });
-    if (error) {
-      const failure = await error.context?.json?.().catch(() => null);
-      if (failure?.error === "openai_not_configured") tell("Set OPENAI_API_KEY in Supabase Edge Function secrets.");
-      else if (failure?.upstream_status) tell("OpenAI rejected the test request (HTTP " + failure.upstream_status + ").");
-      else tell("GPT connection check failed. Confirm you are signed in as a verified catalog admin.");
-    } else tell(data?.connected === true ? "GPT connection verified." : "GPT did not return a successful response.");
-  } catch {
-    tell("Could not reach the GPT connection check.");
-  } finally { button.disabled = false; }
-};
 
 function show(session) {
   by("counts").hidden = !session;

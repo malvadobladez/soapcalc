@@ -26,11 +26,11 @@
         <p class="section-kicker">The Hidden Grimoire</p>
       </div>
       <nav class="grimoire-nav grimoire-sidebar-nav py-4" aria-label="Workspace">
-        <a href="/">The Grimoire</a>
-        <a href="/stores.html" aria-current="page">My Apothecary</a>
-        <a href="/master-items.html">Apothecary Catalog</a>
-        <a href="/#leaves">Tea recipes</a>
-        <a href="/#calculus">Soap calculator</a>
+        <a href="/" title="Return to The Grimoire homepage">The Grimoire</a>
+        <a href="/stores.html" aria-current="page" title="Open your personal inventory and purchase costs">My Apothecary</a>
+        <a href="/master-items.html" title="Browse the shared Apothecary Catalog">Apothecary Catalog</a>
+        <a href="/#leaves" title="Go to Tea Recipes">Tea recipes</a>
+        <a href="/#calculus" title="Go to Soap Calculator">Soap calculator</a>
       </nav>
       <div class="sidebar-art-shell">
         <img class="sidebar-art-image" src="/static/img/brand/sidebar-art.jpg" width="400" height="400" alt="" decoding="async">
@@ -39,8 +39,8 @@
 <main class="workspace-main">
   <header class="surface-panel px-5 py-4" data-grimoire-header="My Apothecary">
     <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace">
-          <a href="/">The Grimoire</a><a href="/stores.html" aria-current="page">My Apothecary</a><a href="/master-items.html">Apothecary Catalog</a>
-          <a href="/#leaves">Tea recipes</a><a href="/#calculus">Soap calculator</a>
+          <a href="/" title="Return to The Grimoire homepage">The Grimoire</a><a href="/stores.html" aria-current="page" title="Open your personal inventory and purchase costs">My Apothecary</a><a href="/master-items.html" title="Browse the shared Apothecary Catalog">Apothecary Catalog</a>
+          <a href="/#leaves" title="Go to Tea Recipes">Tea recipes</a><a href="/#calculus" title="Go to Soap Calculator">Soap calculator</a>
         </nav>
   </header>
   <section class="surface-panel p-6">
@@ -48,7 +48,7 @@
     <p id="status" role="status">Connecting…</p>
 
     <div id="workspace" hidden>
-      <a href="/master-items.html" class="btn btn-ghost">Browse Apothecary Catalog</a>
+      <a href="/master-items.html" class="btn btn-ghost rounded-full" title="Browse the shared Apothecary Catalog">Browse Apothecary Catalog</a>
       <h2 class="text-2xl mt-4">Inventory</h2>
       <div class="flex flex-wrap items-center gap-3 mt-4">
         <label>Search <input id="stock-search" type="search" class="input input-bordered"></label>

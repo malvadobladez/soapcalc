@@ -9,6 +9,9 @@
   <link rel="stylesheet" href="/static/css/grimoire-account.css?v=workspace-shell">
 <link rel="stylesheet" href="/static/css/apothecary-table.css?v=shared-toolbar">
 <style>
+    #ops-choices > label { display:flex; gap:.65rem; align-items:flex-start; padding:.55rem 0; }
+    #ops-choices > label + label { border-top:1px solid var(--color-base-300); }
+    #ops-choices small { display:block; margin-top:.2rem; }
     body.catalog-management .workspace-main > .surface-panel { background-color:#eee8f1; border-color:#c9b7d1; }
     body.catalog-management .section-kicker { color:#704d7d; }
     #supplier-tools { display:grid; grid-template-columns:repeat(auto-fit,minmax(13rem,1fr)); gap:.75rem; }
@@ -706,7 +709,8 @@ async function openPreview(payload, title, supplier, inBatch = false) {
         }
         const { data:saved, error } = await query.select("id");
         if (!active()) return;
-        if (error || saved?.length !== (supplier ? selected.length : 1)) throw new Error("Save failed");
+        if (error) throw error;
+        if (saved?.length !== (supplier ? selected.length : 1)) throw new Error("Save failed");
         if (!metadataQueue.length) opsDialog.close();
         else {
           opsChoices.replaceChildren();
@@ -715,8 +719,12 @@ async function openPreview(payload, title, supplier, inBatch = false) {
         }
         await catalog();
         tell(supplier ? "Selected supplier products added." : "Metadata updated.");
-      } catch {
-        if (active()) opsStatus.textContent = "Could not apply these changes. Reload the catalog and reopen the preview.";
+      } catch (error) {
+        if (active()) opsStatus.textContent = error?.code === "42501"
+          ? "Catalog changes require admin write access. Sign in again with your admin account."
+          : error?.code === "23505"
+            ? "An entry already exists. Reload the catalog and reopen the preview."
+            : "Could not apply these changes. Reload the catalog and reopen the preview.";
       } finally {
         opsNext.disabled = opsApply.disabled = opsClose.disabled = false;
       }

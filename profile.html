@@ -31,7 +31,7 @@
     <p id="message" class="mt-4" role="status"></p>
   </main>
   <script type="module">
-    import { db } from "/static/js/grimoire-account.js";
+    import { db, hasVulgarDisplayName } from "/static/js/grimoire-account.js";
     const message = document.getElementById("message");
     const form = document.querySelector("form");
     function show(user) {
@@ -50,6 +50,10 @@
       event.preventDefault();
       const button = form.querySelector('[type="submit"]');
       const fields = new FormData(form);
+      if (hasVulgarDisplayName(fields.get("display_name"))) {
+        message.textContent = "Choose a display name without vulgar language.";
+        return;
+      }
       button.disabled = true;
       try {
         const data = Object.fromEntries(["display_name", "contact_phone"].map(key => [key, fields.get(key).trim()]));

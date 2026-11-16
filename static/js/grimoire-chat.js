@@ -72,7 +72,7 @@ export function mountGrimoireChat(db) {
 
   db.auth.onAuthStateChange((event, session) => {
     const user = session?.user;
-    const next = user?.email_confirmed_at && user.app_metadata?.catalog_admin === true ? user.id : null;
+    const next = user?.email_confirmed_at ? user.id : null;
     if (!next) {
       clear();
       if (panel.open) panel.close();

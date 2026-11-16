@@ -104,12 +104,12 @@
         <select id="category" class="select select-bordered bg-base-100" aria-label="Category"></select>
         <select id="form" class="select select-bordered bg-base-100" aria-label="Form"></select>
         <label class="catalog-stock"><input id="stock-only" type="checkbox" class="checkbox checkbox-sm"> In inventory only</label>
-        <button id="clear" type="button" class="btn btn-ghost rounded-full">Lift Filters</button>
-        <button id="refresh" type="button" class="btn btn-ghost rounded-full">Refresh</button>
+        <button id="clear" title="Clear search and filters" type="button" class="btn btn-ghost rounded-full">Lift Filters</button>
+        <button id="refresh" title="Reload the catalog and your inventory status" type="button" class="btn btn-ghost rounded-full">Refresh</button>
         <div id="catalog-admin" class="catalog-admin-actions" hidden>
-          <button id="bulk-edit" type="button" class="btn btn-secondary rounded-full">Bulk Edit</button>
-          <button id="new-item" type="button" class="btn btn-primary rounded-full">Add to the Catalog</button>
-          <button id="edit-selected" type="button" class="btn btn-primary rounded-full" hidden>Edit selected</button>
+          <button id="bulk-edit" title="Enter or exit bulk editing" type="button" class="btn btn-secondary rounded-full">Bulk Edit</button>
+          <button id="new-item" title="Create a shared catalog entry" type="button" class="btn btn-primary rounded-full">Add to the Catalog</button>
+          <button id="edit-selected" title="Edit the selected catalog entries" type="button" class="btn btn-primary rounded-full" hidden>Edit selected</button>
         </div>
       </div>
       <button id="logout" type="button" class="btn btn-ghost btn-sm mt-2">Sign out</button>
@@ -423,6 +423,7 @@ function render() {
     const row = document.createElement("tr");
     const name = document.createElement("td");
     const toggle = element("button", "+ " + item.name);
+    toggle.title = "Expand or collapse the ingredient details";
     toggle.type = "button";
     toggle.className = "font-semibold";
     toggle.setAttribute("aria-expanded", "false");
@@ -454,6 +455,7 @@ function render() {
     row.append(name, element("td", item.category ?? "—"), element("td", item.form ?? "—"), element("td", inInventory ? "Yes" : "No"));
     const actions = document.createElement("td");
     const view = element("button", "View");
+    view.title = "Show or hide ingredient values and notes below this row";
     view.type = "button";
     view.className = "btn btn-ghost";
     view.onclick = () => toggle.click();
@@ -461,10 +463,13 @@ function render() {
     add.type = "button";
     add.className = "btn btn-ghost";
     add.disabled = inInventory || !item.is_active;
+    add.title = inInventory ? "Already in your inventory" : !item.is_active
+      ? "Inactive catalog items cannot be added" : "Enter purchase details and add this item to your inventory";
     add.onclick = () => openHandoff(item);
     actions.append(add, view);
     if (admin) {
       const modify = element("button", "Edit");
+    modify.title = "Edit this shared catalog entry";
       modify.type = "button";
       modify.className = "btn btn-ghost";
       modify.onclick = () => edit([item.id]);

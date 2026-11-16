@@ -47,7 +47,9 @@ if (host) {
   kicker.textContent = "The Living Grimoire";
   const title = document.createElement("p");
   title.className = "text-xl font-semibold";
-  title.textContent = host.dataset.grimoireHeader;
+  const onAdminPage = host.dataset.grimoireHeader === "Apothecary Catalog" &&
+    new URLSearchParams(location.search).get("manage") === "1";
+  title.textContent = onAdminPage ? "Admin" : host.dataset.grimoireHeader;
   label.append(kicker, title);
   const account = document.createElement("div");
   account.className = "grimoire-account";
@@ -142,7 +144,14 @@ if (host) {
   signup.addEventListener("cancel", event => { if (signupBusy()) event.preventDefault(); });
   signup.addEventListener("close", () => { signupForm.reset(); signupStatus.textContent = ""; });
   document.body.append(dialog, signup);
-  account.append(profile, logout, signIn);
+  const adminLink = document.createElement("a");
+  adminLink.href = "/apothecary-catalog?manage=1";
+  adminLink.className = "grimoire-account-pill";
+  adminLink.textContent = "Admin";
+  adminLink.title = "Open administration tools";
+  adminLink.hidden = true;
+  if (onAdminPage) adminLink.setAttribute("aria-current", "page");
+  account.append(adminLink, profile, logout, signIn);
   line.append(label, account);
   host.prepend(line, status);
 
@@ -155,6 +164,7 @@ if (host) {
     account.hidden = false;
     profile.hidden = logout.hidden = !user;
     signIn.hidden = Boolean(user);
+    adminLink.hidden = user?.app_metadata?.catalog_admin !== true;
     if (user && dialog.open) dialog.close();
     if (user && signup.open) signup.close();
   });

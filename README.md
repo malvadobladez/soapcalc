@@ -27,3 +27,7 @@ GitHub holds the website and versioned SQL migrations. Cloudflare Pages deploys 
 The overview, Master Items, and Inventory are deployed. The catalog was seeded from Brenda. Current QA covers signed-in Add and Edit, the Inventory handoff, stock and price saves, retire and restore, responsive layout, and account isolation. Full browser verification and remaining Brenda workflow parity are in progress.
 
 Once Master Items and Inventory are verified, the next workspace will be chosen between Soap Calc and Herbal Preparations. Metadata refresh, supplier sync, and GPT workflows are pending. Calculator migration will preserve approved formulas and ingredient values, with independent comparison against Brenda before release.
+
+## Interface conventions
+
+Add a short hover hint to each new action button. Describe what the action does and keep the button’s visible label meaningful by itself.

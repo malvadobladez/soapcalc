@@ -12,14 +12,11 @@
     label { display:grid; gap:.3rem; }
     nav { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
   </style>
+  <script defer src="/static/js/grimoire-nav.js"></script>
 </head>
 <body class="antialiased">
   <main class="surface-panel p-6">
-    <nav aria-label="Workspace">
-      <a href="/" class="btn btn-ghost rounded-full" title="Return to The Grimoire homepage">The Grimoire</a>
-      <a href="/apothecary-catalog" class="btn btn-ghost rounded-full" title="Browse the shared Apothecary Catalog">Apothecary Catalog</a>
-      <a href="/my-apothecary" class="btn btn-ghost rounded-full" title="Open your personal inventory and purchase costs">My Apothecary</a>
-    </nav>
+    <nav aria-label="Workspace" data-grimoire-nav="/profile" data-link-class="btn btn-ghost rounded-full"></nav>
     <header class="surface-panel px-5 py-4" data-grimoire-header="My profile"></header>
     <form class="space-y-4 mt-4" hidden>
       <label>Display name <input class="input input-bordered rounded-full" name="display_name" autocomplete="nickname" maxlength="100"></label>

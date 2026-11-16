@@ -57,6 +57,7 @@ Deno.serve(async (request: Request) => {
       return json(502, { error: "openai_request_failed", upstream_status: result.status });
     }
     const response = await result.json();
+    if (response.status === "incomplete") return json(200, { status: "incomplete" });
     const answer = response.output?.flatMap((item: { type: string; content?: { type: string; text?: string }[] }) =>
       item.type === "message" ? (item.content ?? []).filter(part => part.type === "output_text").map(part => part.text ?? "") : []
     ).join("\n").trim();

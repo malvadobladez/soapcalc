@@ -4,12 +4,16 @@ export function mountGrimoireChat(db) {
   widget.innerHTML = `
     <style>
       .grimoire-chat-launch { position:fixed; right:1rem; bottom:1rem; z-index:30; }
-      .grimoire-chat-panel { position:fixed; inset:0 0 0 auto; margin:0; width:min(100%,30rem); height:100%; max-width:100%; max-height:100%; overflow:auto; }
+      .grimoire-chat-panel { position:fixed; inset:0 0 0 auto; margin:0; width:min(100%,clamp(30rem,42vw,48rem)); height:100%; max-width:100%; max-height:100%; overflow:auto; }
+      .grimoire-chat-panel[open] { display:flex; flex-direction:column; }
+      .grimoire-chat-panel > :is(.grimoire-chat-top, form) { flex:none; }
+      .grimoire-chat-panel .home-ai-transcript { flex:1 1 auto; min-height:6rem; max-height:none; overflow:auto; position:relative; }
+      .grimoire-chat-panel textarea { max-height:25dvh; }
       .grimoire-chat-panel::backdrop { background:#27231955; }
       .grimoire-chat-top { display:flex; align-items:center; justify-content:space-between; gap:.75rem; }
       .grimoire-chat-text { white-space:pre-wrap; overflow-wrap:anywhere; }
-      .grimoire-chat-entry { margin-bottom:.6rem; max-width:90%; border-radius:1rem; padding:.65rem .85rem; background:var(--color-base-200); }
-      .grimoire-chat-entry-user { margin-inline-start:auto; background:#35584614; }
+      .grimoire-chat-entry { margin-bottom:.6rem; max-width:100%; border-radius:1rem; padding:.65rem .85rem; background:var(--color-base-200); }
+      .grimoire-chat-entry-user { max-width:90%; margin-inline-start:auto; background:#35584614; }
       @media(max-width:540px) { .grimoire-chat-panel { width:100%; } }
     </style>
     <button type="button" class="btn btn-primary rounded-full grimoire-chat-launch" aria-haspopup="dialog" title="Open the Grimoire assistant" hidden>▤ Ask the Grimoire</button>
@@ -57,7 +61,8 @@ export function mountGrimoireChat(db) {
       bubble.append(label, body);
       log.append(bubble);
     }
-    log.scrollTop = log.scrollHeight;
+    const latestReply = log.lastElementChild;
+    log.scrollTop = latestReply ? latestReply.offsetTop : 0;
   }
 
   function clear() {

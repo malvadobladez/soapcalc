@@ -9,6 +9,10 @@
   <link rel="stylesheet" href="/static/css/grimoire-account.css?v=workspace-shell">
 <link rel="stylesheet" href="/static/css/apothecary-table.css?v=shared-toolbar">
 <style>
+    body.catalog-management .workspace-main > .surface-panel { background-color:#eee8f1; border-color:#c9b7d1; }
+    body.catalog-management .section-kicker { color:#704d7d; }
+    #supplier-tools { display:grid; grid-template-columns:repeat(auto-fit,minmax(13rem,1fr)); gap:.75rem; }
+    #supplier-tools[hidden] { display:none; }
 
       .entry-dialog { margin:auto; width:min(92vw,46rem); max-height:88vh; overflow:auto; }
     .catalog-row-actions { display:inline-grid; grid-template-columns:13rem max-content; align-items:center; gap:.25rem; }
@@ -73,6 +77,19 @@
           <button id="edit-selected" title="Edit the selected catalog entries" type="button" class="btn btn-primary rounded-full" hidden>Edit selected</button>
         </div>
       </div>
+      <section id="supplier-tools" class="mt-4" aria-label="Supplier sync" hidden><div class="surface-panel p-4"><label class="block">Colorants Sync<select class="select select-bordered w-full mt-2" data-sync-source="colorants"><option value="mica" data-form="Mica Powder">Mica Powder</option><option value="eco-glitter" data-form="Eco Glitter">Eco Glitter</option><option value="neon" data-form="Neon">Neon</option><option value="liquid" data-form="Liquid Colorant">Liquid Colorant</option><option value="oxide" data-form="Oxide">Oxide</option><option value="lake" data-form="Lake">Lake</option><option value="dye" data-form="Dye">Dye</option><option value="pigment" data-form="Pigment">Pigment</option><option value="bath-bomb" data-form="Bath Bomb Colorant">Bath Bomb Colorant</option></select></label><button type="button" class="btn btn-ghost rounded-full mt-2" data-sync="colorants" data-category="Colorants" title="Preview new products from this supplier collection">Preview Sync</button></div>
+<div class="surface-panel p-4"><label class="block">Herbal Sync<select class="select select-bordered w-full mt-2" data-sync-source="herbal"><option value="cut-and-sifted-herbs" data-form="Cut/Sifted">Cut &amp; Sifted Herbs</option><option value="dried-flowers" data-form="Whole Flower">Dried Flowers</option><option value="loose-teas" data-form="Tea">Loose Teas</option></select></label><button type="button" class="btn btn-ghost rounded-full mt-2" data-sync="herbal" data-category="Herb" title="Preview new products from this supplier collection">Preview Sync</button></div>
+<div class="surface-panel p-4"><label class="block">Additives Sync<select class="select select-bordered w-full mt-2" data-sync-source="additives"><option value="herbs" data-form="Herbs &amp; Botanicals">Herbs &amp; Botanicals</option><option value="extracts" data-form="Extracts">Extracts</option><option value="butters" data-form="Butters">Butters</option><option value="clays" data-form="Clays">Clays</option><option value="flavour-oils" data-form="Flavour Oils">Flavour Oils</option><option value="liquid-gels" data-form="Liquid Gels">Liquid Gels</option><option value="preservatives" data-form="Preservatives">Preservatives</option><option value="lye" data-form="Lye">Lye</option><option value="organics" data-form="Organics">Organics</option><option value="salts" data-form="Bath Salt">Bath Salt</option><option value="vegetable-oils" data-form="Vegetable Soaping Oil">Vegetable Soaping Oil</option><option value="waxes" data-form="Waxes">Waxes</option><option value="granular-powders" data-form="Granular &amp; Powder">Granular &amp; Powder</option></select></label><button type="button" class="btn btn-ghost rounded-full mt-2" data-sync="additives" data-category="Additives (Bath &amp; Body)" title="Preview new products from this supplier collection">Preview Sync</button></div>
+<div class="surface-panel p-4"><label class="block">Scents Sync<select class="select select-bordered w-full mt-2" data-sync-source="scents"><option value="essential-oils-all" data-form="Essential Oils (All)">Essential Oils (All)</option><option value="essential-oils-a-k" data-form="Essential Oils A-K">Essential Oils A-K</option><option value="essential-oils-l-z" data-form="Essential Oils L-Z">Essential Oils L-Z</option><option value="fragrance-oils-all" data-form="Fragrance Oils (All)">Fragrance Oils (All)</option><option value="natural-fragrance-oils" data-form="Natural Fragrance Oils">Natural Fragrance Oils</option><option value="flora-waters" data-form="Flora Waters">Flora Waters</option><option value="hydrosols" data-form="Hydrosols">Hydrosols</option><option value="vanilla-stabilizer" data-form="Vanilla Stabilizer">Vanilla Stabilizer</option></select></label><button type="button" class="btn btn-ghost rounded-full mt-2" data-sync="scents" data-category="Scents" title="Preview new products from this supplier collection">Preview Sync</button></div></section>
+      <dialog id="ops-preview" class="surface-panel p-6 entry-dialog" aria-labelledby="ops-title">
+        <h2 id="ops-title" class="text-2xl"></h2>
+        <p id="ops-status" role="status" class="mt-3"></p>
+        <div id="ops-choices" class="mt-3"></div>
+        <div class="flex justify-end gap-2 mt-4">
+          <button type="button" class="btn btn-ghost rounded-full" id="ops-close" title="Close the preview">Close</button>
+          <button type="button" class="btn btn-primary rounded-full" id="ops-apply" title="Save selected changes to the catalog" hidden>Apply Selected</button>
+        </div>
+      </dialog>
       <dialog id="editor" class="surface-panel p-6 entry-dialog" aria-labelledby="edit-title">
         <form id="edit-form" class="space-y-4">
           <h2 id="edit-title" class="text-2xl">Catalog item</h2>
@@ -152,6 +169,7 @@ const management = new URLSearchParams(location.search).get("manage") === "1";
 let admin = false;
 
 if (management) {
+  document.body.classList.add("catalog-management");
   document.title = "Admin | The Hidden Grimoire";
   by("catalog-kicker").textContent = "Administration";
   by("catalog-title").textContent = "Catalog Management";
@@ -401,7 +419,14 @@ function render() {
       modify.type = "button";
       modify.className = "btn btn-ghost";
       modify.onclick = () => edit([item.id]);
-      actions.append(modify);
+      const refresh = element("button", "Refresh Metadata");
+      refresh.type = "button";
+      refresh.className = "btn btn-ghost";
+      refresh.title = "Preview AI suggestions for this ingredient";
+      refresh.disabled = [item.category, item.item_class].some(value => /^(colorants|packaging)$/i.test(value?.trim() ?? ""));
+      if (refresh.disabled) refresh.title = "General AI refresh excludes colorants and packaging";
+      refresh.onclick = () => openPreview({ type:"metadata", id:Number(item.id) }, item.name);
+      actions.append(modify, refresh);
     }
     row.append(actions);
     by("catalog").append(row, detailRow);
@@ -509,6 +534,99 @@ handoffForm.onsubmit = async event => {
 };
 
 
+const opsDialog = by("ops-preview");
+const opsApply = by("ops-apply");
+const opsClose = by("ops-close");
+const opsStatus = by("ops-status");
+const opsChoices = by("ops-choices");
+let opsVersion = 0;
+opsClose.onclick = () => opsDialog.close();
+opsDialog.addEventListener("cancel", event => { if (opsApply.disabled) event.preventDefault(); });
+
+for (const button of document.querySelectorAll("[data-sync]")) {
+  button.onclick = () => {
+    const type = button.dataset.sync;
+    const source = document.querySelector('[data-sync-source="' + type + '"]').selectedOptions[0];
+    void openPreview({ type, source:source.value }, button.closest("div").querySelector("label").firstChild.textContent.trim(),
+      { category:button.dataset.category, form:source.dataset.form });
+  };
+}
+
+async function openPreview(payload, title, supplier) {
+  if (!admin || opsDialog.open || opsApply.disabled) return;
+  const version = ++opsVersion;
+  const active = () => admin && opsDialog.open && opsVersion === version;
+  by("ops-title").textContent = title;
+  opsStatus.textContent = "Loading preview…";
+  opsChoices.replaceChildren();
+  opsApply.hidden = true;
+  opsDialog.showModal();
+  try {
+    const { data, error } = await db.functions.invoke("catalog-preview", { body:payload });
+    if (!active()) return;
+    if (error) throw error;
+    const choices = [];
+    const add = (text, value) => {
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "checkbox checkbox-sm";
+      const label = document.createElement("label");
+      label.className = "flex items-start gap-2 mb-2";
+      label.append(input, document.createTextNode(text));
+      opsChoices.append(label);
+      choices.push({ input, value });
+    };
+    if (!supplier) {
+      for (const [field,label] of [["common_names","Common names"],["usage_context","Usage context"]]) {
+        const current = data.metadata?.[field];
+        const suggested = data.suggestions?.[field];
+        if (suggested && suggested !== current) add(label + " · Current: " + (current ?? "—") + " · Suggested: " + suggested, [field,suggested]);
+      }
+    } else {
+      const known = new Set(items.map(item => item.name.trim().toLowerCase()));
+      for (const product of data.products) {
+        const key = product.name.toLowerCase();
+        if (known.has(key)) continue;
+        known.add(key);
+        add(product.name, { name:product.name, category:supplier.category, item_class:supplier.category,
+          form:supplier.form, is_active:true, metadata:{ source:"vendor-sync", supplier_url:product.url } });
+      }
+    }
+    opsStatus.textContent = choices.length ? "Select the changes to apply." : "No new suggestions or products.";
+    opsApply.hidden = !choices.length;
+    opsApply.onclick = async () => {
+      if (!active() || opsApply.disabled) return;
+      const selected = choices.filter(choice => choice.input.checked).map(choice => choice.value);
+      if (!selected.length) { opsStatus.textContent = "Select at least one change."; return; }
+      opsApply.disabled = opsClose.disabled = true;
+      try {
+        let query;
+        if (supplier) {
+          query = db.from("master_items").insert(selected);
+        } else {
+          const timestamp = new Date().toISOString();
+          const metadata = { ...data.metadata, ...Object.fromEntries(selected), metadata_updated_at:timestamp,
+            ai_refresh:{ model:data.model, fields:selected.map(([field]) => field), applied_at:timestamp } };
+          query = db.from("master_items").update({ metadata }).eq("id",payload.id);
+          query = data.metadata == null ? query.is("metadata",null) : query.eq("metadata",JSON.stringify(data.metadata));
+        }
+        const { data:saved, error } = await query.select("id");
+        if (!active()) return;
+        if (error || saved?.length !== (supplier ? selected.length : 1)) throw new Error("Save failed");
+        opsDialog.close();
+        await catalog();
+        tell(supplier ? "Selected supplier products added." : "Metadata updated.");
+      } catch {
+        if (active()) opsStatus.textContent = "Could not apply these changes. Reload the catalog and reopen the preview.";
+      } finally {
+        opsApply.disabled = opsClose.disabled = false;
+      }
+    };
+  } catch {
+    if (active()) opsStatus.textContent = "Could not load the preview. Try again.";
+  }
+}
+
 function show(session) {
   const canManage = session?.user.app_metadata?.catalog_admin === true;
   const allowed = Boolean(session) && (!management || canManage);
@@ -517,6 +635,8 @@ function show(session) {
   by("back-to-catalog").hidden = !management;
   by("counts").hidden = !allowed;
   by("catalog-admin").hidden = !admin;
+  by("supplier-tools").hidden = !admin;
+  if (!admin) by("ops-preview").close();
   by("workspace").hidden = !allowed;
   if (allowed) { tell(""); void catalog(); return; }
 

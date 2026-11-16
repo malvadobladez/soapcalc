@@ -86,7 +86,12 @@
       <dialog id="metadata-picker" class="surface-panel p-6 entry-dialog" aria-labelledby="metadata-picker-title">
         <h2 id="metadata-picker-title" class="text-2xl">Refresh Metadata</h2>
         <form id="metadata-picker-form" class="mt-4">
-          <label class="block">Ingredient <select id="metadata-item" class="select select-bordered w-full mt-2" required></select></label>
+          <label class="block">Category <select id="metadata-category" class="select select-bordered w-full mt-2" required></select></label>
+          <fieldset class="mt-3">
+            <legend>Choose up to 5 ingredients to review</legend>
+            <div id="metadata-items" class="mt-2" style="max-height:14rem;overflow:auto"></div>
+          </fieldset>
+          <p id="metadata-picker-status" class="mt-2" role="status"></p>
           <div class="flex justify-end flex-wrap gap-2 mt-4">
             <button type="button" id="metadata-picker-close" class="btn btn-ghost rounded-full" title="Close without previewing metadata">Cancel</button>
             <button type="submit" class="btn btn-primary rounded-full" title="Compare AI suggestions with current metadata">Preview Metadata</button>
@@ -99,6 +104,7 @@
         <div id="ops-choices" class="mt-3"></div>
         <div class="flex justify-end gap-2 mt-4">
           <button type="button" class="btn btn-ghost rounded-full" id="ops-close" title="Close the preview">Close</button>
+          <button type="button" class="btn btn-ghost rounded-full" id="ops-next" title="Preview the next selected ingredient" hidden>Next Ingredient</button>
           <button type="button" class="btn btn-primary rounded-full" id="ops-apply" title="Save selected changes to the catalog" hidden>Apply Selected</button>
         </div>
       </dialog>
@@ -547,22 +553,56 @@ handoffForm.onsubmit = async event => {
 
 
 const picker = by("metadata-picker");
+const batchLimit = 5;
+let metadataQueue = [];
+const eligibleMetadata = () => items.filter(item => editorCategory(item) && ![item.category, item.item_class]
+  .some(value => /^(colorants|packaging)$/i.test(value?.trim() ?? "")));
+
+function showCategoryIngredients() {
+  const category = by("metadata-category").value;
+  const list = by("metadata-items");
+  list.replaceChildren();
+  by("metadata-picker-status").textContent = "";
+  for (const item of eligibleMetadata().filter(row => editorCategory(row) === category)) {
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.className = "checkbox checkbox-sm";
+    input.value = String(item.id);
+    const label = document.createElement("label");
+    label.className = "flex items-center gap-2 mb-2";
+    label.append(input, document.createTextNode(item.name));
+    list.append(label);
+  }
+}
+
 by("choose-metadata-item").onclick = () => {
   if (!admin) return;
-  const eligible = items.filter(item => ![item.category, item.item_class]
-    .some(value => /^(colorants|packaging)$/i.test(value?.trim() ?? "")));
-  by("metadata-item").replaceChildren(new Option("Choose an ingredient", ""),
-    ...eligible.map(item => new Option(item.name, item.id)));
+  const categories = [...new Set(eligibleMetadata().map(editorCategory))].sort((a, b) => a.localeCompare(b));
+  by("metadata-category").replaceChildren(new Option("Choose a category", ""),
+    ...categories.map(category => new Option(category, category)));
+  showCategoryIngredients();
   picker.showModal();
 };
+by("metadata-category").onchange = showCategoryIngredients;
 by("metadata-picker-close").onclick = () => picker.close();
 by("metadata-picker-form").onsubmit = event => {
   event.preventDefault();
-  const item = items.find(row => String(row.id) === by("metadata-item").value);
-  if (!admin || !item) return;
+  if (!admin) return;
+  const ids = new Set([...by("metadata-items").querySelectorAll("input:checked")].map(input => input.value));
+  const selection = eligibleMetadata().filter(item => ids.has(String(item.id)) && editorCategory(item) === by("metadata-category").value);
+  if (!selection.length || selection.length > batchLimit) {
+    by("metadata-picker-status").textContent = "Choose between 1 and " + batchLimit + " ingredients.";
+    return;
+  }
+  metadataQueue = selection;
   picker.close();
-  void openPreview({ type:"metadata", id:Number(item.id) }, item.name);
+  nextMetadataIngredient();
 };
+
+function nextMetadataIngredient() {
+  const item = metadataQueue.shift();
+  if (item) void openPreview({ type:"metadata", id:Number(item.id) }, item.name, null, true);
+}
 
 const opsDialog = by("ops-preview");
 const opsApply = by("ops-apply");
@@ -570,8 +610,14 @@ const opsClose = by("ops-close");
 const opsStatus = by("ops-status");
 const opsChoices = by("ops-choices");
 let opsVersion = 0;
-opsClose.onclick = () => opsDialog.close();
-opsDialog.addEventListener("cancel", event => { if (opsApply.disabled) event.preventDefault(); });
+const opsNext = by("ops-next");
+opsClose.onclick = () => { metadataQueue = []; opsDialog.close(); };
+opsNext.onclick = () => {
+  if (opsApply.disabled) return;
+  opsDialog.close();
+  nextMetadataIngredient();
+};
+opsDialog.addEventListener("cancel", event => { if (opsApply.disabled) event.preventDefault(); else metadataQueue = []; });
 
 for (const button of document.querySelectorAll("[data-sync]")) {
   button.onclick = () => {
@@ -582,13 +628,15 @@ for (const button of document.querySelectorAll("[data-sync]")) {
   };
 }
 
-async function openPreview(payload, title, supplier) {
+async function openPreview(payload, title, supplier, inBatch = false) {
   if (!admin || opsDialog.open || opsApply.disabled) return;
   const version = ++opsVersion;
   const active = () => admin && opsDialog.open && opsVersion === version;
   by("ops-title").textContent = title;
   opsStatus.textContent = "Loading preview…";
   opsChoices.replaceChildren();
+  if (!inBatch) metadataQueue = [];
+  opsNext.hidden = !metadataQueue.length;
   opsApply.hidden = true;
   opsDialog.showModal();
   try {
@@ -644,7 +692,7 @@ async function openPreview(payload, title, supplier) {
       if (!active() || opsApply.disabled) return;
       const selected = choices.filter(choice => choice.input.checked).map(choice => choice.value);
       if (!selected.length) { opsStatus.textContent = "Select at least one change."; return; }
-      opsApply.disabled = opsClose.disabled = true;
+      opsNext.disabled = opsApply.disabled = opsClose.disabled = true;
       try {
         let query;
         if (supplier) {
@@ -659,13 +707,18 @@ async function openPreview(payload, title, supplier) {
         const { data:saved, error } = await query.select("id");
         if (!active()) return;
         if (error || saved?.length !== (supplier ? selected.length : 1)) throw new Error("Save failed");
-        opsDialog.close();
+        if (!metadataQueue.length) opsDialog.close();
+        else {
+          opsChoices.replaceChildren();
+          opsApply.hidden = true;
+          opsStatus.textContent = "Metadata updated. Continue to the next ingredient when ready.";
+        }
         await catalog();
         tell(supplier ? "Selected supplier products added." : "Metadata updated.");
       } catch {
         if (active()) opsStatus.textContent = "Could not apply these changes. Reload the catalog and reopen the preview.";
       } finally {
-        opsApply.disabled = opsClose.disabled = false;
+        opsNext.disabled = opsApply.disabled = opsClose.disabled = false;
       }
     };
   } catch {
@@ -684,7 +737,7 @@ function show(session) {
   by("supplier-tools").hidden = !admin;
   by("catalog-stock-filter").hidden = management;
   if (!admin) by("metadata-picker").close();
-  if (!admin) by("ops-preview").close();
+  if (!admin) { metadataQueue = []; by("ops-preview").close(); }
   by("workspace").hidden = !allowed;
   if (allowed) { tell(""); void catalog(); return; }
 

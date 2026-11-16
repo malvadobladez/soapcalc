@@ -8,7 +8,18 @@ const headers = {
 const json = (status: number, value: object) => Response.json(value, { status, headers });
 
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
+  if (request.method === "OPTIONS") {
+    if (request.headers.get("Origin") !== origin) return new Response(null, { status: 403 });
+    const requested = request.headers.get("Access-Control-Request-Headers");
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...headers,
+        "Access-Control-Allow-Headers": requested || headers["Access-Control-Allow-Headers"],
+        "Vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers",
+      },
+    });
+  }
   if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
   const auth = request.headers.get("Authorization");
   if (!auth?.startsWith("Bearer ")) return json(401, { error: "authentication_required" });

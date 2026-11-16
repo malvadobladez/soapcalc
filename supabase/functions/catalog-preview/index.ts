@@ -1,7 +1,7 @@
 const origin = "https://soapcalc.dacruz.ca";
 const headers = {
   "Access-Control-Allow-Origin": origin,
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Cache-Control": "no-store",
 };
@@ -38,7 +38,8 @@ Deno.serve(async (request: Request) => {
     const source = sources[input.type].find(entry => entry.slug === input.source);
     if (!source) return json(400, { error: "unknown_source" });
     return json(200, { products: await supplierProducts(source, input.type === "herbal") });
-  } catch {
+  } catch (error) {
+    console.warn("Catalog preview failed", error instanceof Error ? error.name + ": " + error.message : "unknown");
     return json(502, { error: "preview_unavailable" });
   }
 });

@@ -54,6 +54,10 @@
     .catalog-stock { border-radius:1rem; padding:.65rem .85rem; white-space:nowrap; }
     #status { margin-top:.65rem; color:var(--color-neutral); }
     @media(max-width:540px) { .catalog-toolbar input[type=search],.catalog-toolbar select { flex-basis:100%; } }
+      .grimoire-header-line { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; }
+    .grimoire-account { display:flex; flex-wrap:wrap; align-items:center; gap:.55rem; min-width:0; }
+    .grimoire-account[hidden] { display:none; }
+    .grimoire-account .catalog-pill { color:var(--color-base-content); background:var(--color-base-200); white-space:normal; overflow-wrap:anywhere; }
   </style>
 </head>
 <body class="app-shell antialiased">
@@ -76,8 +80,16 @@
     </aside>
 <main class="workspace-main">
   <header class="surface-panel px-5 py-4">
-    <p class="section-kicker">The Living Grimoire</p>
-    <p class="text-xl font-semibold">Master Items</p>
+    <div class="grimoire-header-line">
+      <div>
+        <p class="section-kicker">The Living Grimoire</p>
+        <p class="text-xl font-semibold">Master Items</p>
+      </div>
+      <div id="header-account" class="grimoire-account" hidden>
+        <span id="display-name" class="catalog-pill"></span>
+        <button id="logout" type="button" class="btn btn-ghost rounded-full catalog-pill">Sign out</button>
+      </div>
+    </div>
     <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace">
           <a href="/">Overview</a><a href="/stores.html">Inventory</a><a href="/master-items.html" aria-current="page">Master Items</a>
           <a href="/#leaves">Tea recipes</a><a href="/#calculus">Soap calculator</a>
@@ -112,7 +124,6 @@
           <button id="edit-selected" title="Edit the selected catalog entries" type="button" class="btn btn-primary rounded-full" hidden>Edit selected</button>
         </div>
       </div>
-      <button id="logout" type="button" class="btn btn-ghost btn-sm mt-2">Sign out</button>
       <dialog id="editor" class="surface-panel p-6 entry-dialog" aria-labelledby="edit-title">
         <form id="edit-form" class="space-y-4">
           <h2 id="edit-title" class="text-2xl">Catalog item</h2>
@@ -556,6 +567,12 @@ handoffForm.onsubmit = async event => {
 };
 
 function show(session) {
+  const user = session?.user;
+  const profile = user?.user_metadata ?? {};
+  const displayName = [profile.display_name, profile.full_name, profile.name]
+    .find(value => typeof value === "string" && value.trim());
+  by("display-name").textContent = user ? (displayName?.trim() || user.email || "Signed in") : "";
+  by("header-account").hidden = !user;
   by("counts").hidden = !session;
   if (!session) handoff.close();
   admin = session?.user.app_metadata?.catalog_admin === true;
@@ -591,7 +608,7 @@ by("refresh").onclick = catalog;
 by("previous").onclick = () => { page--; render(); };
 by("next").onclick = () => { page++; render(); };
 db.auth.onAuthStateChange((event, session) => {
-  if (["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT"].includes(event)) setTimeout(() => show(session), 0);
+  if (["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT", "USER_UPDATED"].includes(event)) setTimeout(() => show(session), 0);
 });
 </script>
 </body>

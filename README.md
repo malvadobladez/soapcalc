@@ -31,3 +31,5 @@ Once Apothecary Catalog and Inventory are verified, the next workspace will be c
 ## Interface conventions
 
 Add a short hover hint to each new action button. Describe what the action does and keep the button’s visible label meaningful by itself.
+
+Workspace pages use the existing `workspace-frame` and `workspace-main` layout. Mount the shared sidebar with `data-grimoire-sidebar` and the mobile menu with `data-grimoire-nav`, passing the page route to each. Load `static/js/grimoire-nav.js` and `static/css/grimoire-account.css` for the shared markup, links, and styles. Profile uses the same navigation links in its account layout.

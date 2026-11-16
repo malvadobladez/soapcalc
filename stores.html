@@ -6,6 +6,7 @@
 <title>The Stores | The Hidden Grimoire</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/grimoire-account.css">
 <style>
     .grimoire-nav { display:flex; flex-wrap:wrap; gap:.25rem .75rem; }
     .grimoire-nav a { padding:.3rem .5rem; text-decoration:underline; text-underline-offset:.2em; }
@@ -36,9 +37,7 @@
       </div>
     </aside>
 <main class="workspace-main">
-  <header class="surface-panel px-5 py-4">
-    <p class="section-kicker">The Living Grimoire</p>
-    <p class="text-xl font-semibold">Inventory</p>
+  <header class="surface-panel px-5 py-4" data-grimoire-header="Inventory">
     <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace">
           <a href="/">Overview</a><a href="/stores.html" aria-current="page">Inventory</a><a href="/master-items.html">Master Items</a>
           <a href="/#leaves">Tea recipes</a><a href="/#calculus">Soap calculator</a>
@@ -54,8 +53,6 @@
       <a href="/signup.html" class="btn btn-ghost rounded-full">Create account</a>
     </form>
     <div id="workspace" hidden>
-      <a href="/profile.html" class="btn btn-ghost rounded-full">My profile</a>
-      <button id="logout" type="button" class="btn btn-ghost">Sign out</button>
       <a href="/master-items.html" class="btn btn-ghost">Browse Master Items</a>
       <h2 class="text-2xl mt-4">My Inventory</h2>
       <div class="flex flex-wrap items-center gap-3 mt-4">
@@ -85,8 +82,7 @@
 </main>
 </div>
 <script type="module">
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm";
-const db = createClient("https://dfuanosyewsimvhdparf.supabase.co", "sb_publishable_biDbT_ZmXynIVLrgukrz5g_ZBTk84T7");
+import { db } from "/static/js/grimoire-account.js";
 const by = id => document.getElementById(id);
 const tell = message => { by("status").textContent = message; };
 const element = (tag, value) => { const item = document.createElement(tag); item.textContent = value; return item; };
@@ -314,7 +310,7 @@ by("login").onsubmit = async event => {
   form.reset();
   if (error) tell("Sign-in failed. Check your email and password.");
 };
-by("logout").onclick = async () => { const { error } = await db.auth.signOut(); if (error) tell("Could not sign out."); };
+
 db.auth.onAuthStateChange((event, session) => {
   if (["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT"].includes(event)) setTimeout(() => show(session), 0);
 });

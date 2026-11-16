@@ -76,8 +76,8 @@
   </section>
 </main>
 </div>
-<script type="module">
-import { db } from "/static/js/grimoire-account.js?v=signup-popup-1";
+<script data-cfasync="false" type="module">
+import { db } from "/static/js/grimoire-account.js?v=signup-popup-2";
 const by = id => document.getElementById(id);
 const tell = message => { by("status").textContent = message; };
 const element = (tag, value) => { const item = document.createElement(tag); item.textContent = value; return item; };

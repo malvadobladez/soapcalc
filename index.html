@@ -17,6 +17,13 @@
     .grimoire-mobile { display:flex; }
     .grimoire-logo { width:8rem; }
     @media (min-width:768px) { .grimoire-mobile { display:none; } }
+      .chat-action-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem 1rem; }
+    #chat-progress:empty, #chat-status:empty { display:none; }
+    #workspace-chat[hidden], #chat-transcript[hidden] { display:none; }
+    .chat-entry { max-width:85%; border-radius:1rem; padding:.65rem 1rem; background:var(--color-base-200); }
+    .chat-entry-user { margin-inline-start:auto; background:#35584614; }
+    .chat-entry p { white-space:pre-wrap; overflow-wrap:anywhere; }
+    @media(max-width:420px) { .chat-entry { max-width:100%; } }
   </style>
 </head>
 <body class="app-shell antialiased">
@@ -58,14 +65,23 @@
           </div>
           <section class="surface-panel bg-base-200/70 p-6" aria-labelledby="chat-title">
             <h2 id="chat-title" class="overview-script-subtitle">Ask the Grimoire.</h2>
-            <p id="chat-status" class="mt-2" role="status">Sign in as a catalog admin to try the assistant.</p>
-            <div id="chat-transcript" role="log" aria-label="Conversation" class="space-y-4 mt-4" style="max-height:22rem;overflow:auto"></div>
-            <form id="workspace-chat" class="space-y-4 mt-4" hidden>
-              <label for="chat-question">Ask about soap, tea, ingredients, or your workspace.</label>
-              <textarea id="chat-question" class="textarea textarea-bordered w-full bg-base-100" rows="3" maxlength="2000" required></textarea>
-              <button type="submit" class="btn btn-primary rounded-full">Ask the Grimoire</button>
-              <button type="button" id="chat-clear" class="btn btn-ghost rounded-full">Clear conversation</button>
-            </form>
+            <div class="home-ai-shell mt-4">
+              <form id="workspace-chat" class="home-ai-composer" hidden>
+                <label for="chat-question" class="sr-only">Question for the Grimoire</label>
+                <textarea id="chat-question" class="textarea textarea-bordered home-ai-prompt w-full bg-base-100" rows="3" maxlength="2000" placeholder="What knowledge do you seek?" required></textarea>
+                <div class="chat-action-bar">
+                  <div class="home-ai-actions">
+                    <button type="submit" class="btn btn-primary rounded-full px-6">Send Forth</button>
+                    <button type="button" id="chat-clear" class="btn btn-ghost rounded-full px-6">Clear the Page</button>
+                  </div>
+                  <p id="chat-progress" class="home-ai-status" role="status"></p>
+                </div>
+              </form>
+              <p id="chat-status" class="home-ai-status" role="status">Sign in as a catalog admin to try the assistant.</p>
+              <div id="chat-transcript" role="log" aria-label="Conversation" class="home-ai-transcript" hidden>
+                <p id="chat-empty">Set forth your question, and the Grimoire shall answer.</p>
+              </div>
+            </div>
           </section>
         </div>
       </section>
@@ -89,6 +105,8 @@
     const question = document.getElementById("chat-question");
     const transcript = document.getElementById("chat-transcript");
     const status = document.getElementById("chat-status");
+    const progress = document.getElementById("chat-progress");
+    const empty = document.getElementById("chat-empty");
     const submit = form.querySelector('button[type="submit"]');
     const clear = document.getElementById("chat-clear");
     let history = [];
@@ -98,7 +116,8 @@
       revision++;
       history = [];
       form.reset();
-      transcript.replaceChildren();
+      transcript.replaceChildren(empty);
+      progress.textContent = "";
       submit.disabled = false;
       status.textContent = "";
     }
@@ -107,8 +126,9 @@
       const heading = document.createElement("strong");
       heading.textContent = label;
       const body = document.createElement("p");
-      body.style.whiteSpace = "pre-wrap";
-      body.style.overflowWrap = "anywhere";
+      entry.className = label === "You" ? "chat-entry chat-entry-user" : "chat-entry";
+      heading.className = "section-kicker";
+      empty.remove();
       body.textContent = content;
       entry.append(heading, body);
       transcript.append(entry);
@@ -121,7 +141,7 @@
       const nextId = allowed ? user.id : null;
       if (nextId !== accountId) reset();
       accountId = nextId;
-      form.hidden = !allowed;
+      form.hidden = transcript.hidden = !allowed;
       if (!allowed) status.textContent = user ? "The assistant is available to catalog admins during testing." : "Sign in as a catalog admin to try the assistant.";
     });
     form.onsubmit = async event => {
@@ -130,7 +150,7 @@
       if (!accountId || !message || submit.disabled) return;
       const request = ++revision;
       submit.disabled = true;
-      status.textContent = "Waiting for the Grimoire…";
+      progress.textContent = "Waiting for the Grimoire…";
       try {
         const { data, error } = await db.functions.invoke("workspace-chat", { body: { message, history } });
         if (request !== revision) return;
@@ -139,9 +159,9 @@
         append("The Grimoire", data.answer);
         history = [...history, { role: "user", content: message }, { role: "assistant", content: data.answer.slice(0, 2000) }].slice(-6);
         if (question.value.trim() === message) question.value = "";
-        status.textContent = "";
+        progress.textContent = "";
       } catch {
-        if (request === revision) status.textContent = "Could not get a reply. Your question is still here. Try again.";
+        if (request === revision) progress.textContent = "Could not get a reply. Your question is still here. Try again.";
       } finally {
         if (request === revision) submit.disabled = false;
       }

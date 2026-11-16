@@ -173,7 +173,7 @@ function displayUnitCost(item, cell, retailCell) {
 async function inventory() {
   const version = ++loadVersion;
   const { data, error } = await db.from("inventory_items")
-    .select("master_item_id,is_active,in_stock,purchase_total_cost,purchase_weight_grams,supplier,manufacturer,stock_quantity,stock_unit,purchase_quantity,purchase_unit,markup_percent,master_items(name,category,form,density_g_per_ml)")
+    .select("owner_id,master_item_id,is_active,in_stock,purchase_total_cost,purchase_weight_grams,supplier,manufacturer,stock_quantity,stock_unit,purchase_quantity,purchase_unit,markup_percent,master_items(name,category,form,density_g_per_ml)")
     .order("master_item_id");
   if (version !== loadVersion || by("workspace").hidden) return;
   by("stock").replaceChildren();
@@ -325,11 +325,11 @@ async function inventory() {
     lifecycle.className = "btn btn-ghost";
     lifecycle.onclick = async () => {
       const active = !item.is_active;
-      lifecycle.disabled = true;
+      lifecycle.disabled = remove.disabled = true;
       const { data, error } = await db.from("inventory_items").update({ is_active: active })
         .eq("master_item_id", item.master_item_id).eq("is_active", item.is_active)
         .select("is_active").maybeSingle();
-      lifecycle.disabled = false;
+      lifecycle.disabled = remove.disabled = false;
       if (!row.isConnected) return;
       if (error || !data) {
         tell("Could not change item status. Reload Inventory and try again.");
@@ -364,7 +364,29 @@ async function inventory() {
       editor.replaceChildren(heading, form);
       editor.showModal();
     };
-    actions.append(edit, lifecycle);
+    const remove = element("button", "Remove");
+    remove.type = "button";
+    remove.className = "btn btn-ghost rounded-full text-error";
+    remove.title = "Permanently remove this item and its stock and cost details from My Apothecary";
+    remove.onclick = async () => {
+      if (!window.confirm(`Remove ${name} from My Apothecary? Its stock and cost details will be deleted. You can add the ingredient again from the catalog.`)) return;
+      remove.disabled = edit.disabled = lifecycle.disabled = true;
+      const { data, error } = await db.from("inventory_items").delete()
+        .eq("owner_id", item.owner_id).eq("master_item_id", item.master_item_id)
+        .select("master_item_id").maybeSingle();
+      if (!row.isConnected) return;
+      if (error || !data) {
+        remove.disabled = edit.disabled = lifecycle.disabled = false;
+        tell("Could not remove the inventory item. Reload My Apothecary and try again.");
+        return;
+      }
+      inventoryRows = inventoryRows.filter(entry => entry.row !== row);
+      row.remove();
+      detailRow.remove();
+      sortInventory();
+      tell(`${name} removed from My Apothecary.`);
+    };
+    actions.append(edit, lifecycle, remove);
     row.append(actions);
     inventoryRows.push({ item, row, detailRow, toggle });
   }

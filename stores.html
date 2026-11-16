@@ -229,6 +229,7 @@ async function inventory() {
     row.append(retail);
     displayUnitCost(item, unitCost, retail);
     const save = element("button", "Save");
+    save.title = "Save changes to this personal inventory item";
     save.className = "btn btn-primary";
     form.append(save);
     form.onsubmit = async event => {
@@ -261,6 +262,7 @@ async function inventory() {
     };
     const actions = document.createElement("td");
     const lifecycle = element("button", item.is_active ? "Retire" : "Restore");
+    lifecycle.title = item.is_active ? "Hide this item from the active inventory list" : "Return this item to the active inventory list";
     lifecycle.type = "button";
     lifecycle.className = "btn btn-ghost";
     lifecycle.onclick = async () => {
@@ -277,6 +279,7 @@ async function inventory() {
       }
       item.is_active = data.is_active;
       lifecycle.textContent = item.is_active ? "Retire" : "Restore";
+      lifecycle.title = item.is_active ? "Hide this item from the active inventory list" : "Return this item to the active inventory list";
       stockStatus.textContent = item.is_active ? "" : "Retired";
       sortInventory();
       tell(item.is_active ? "Inventory item restored." : "Inventory item retired.");

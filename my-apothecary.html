@@ -70,6 +70,7 @@
 <script data-cfasync="false" type="module">
 import { db } from "/static/js/grimoire-account.js?v=floating-chat-1";
 import { viewItem } from "/static/js/ingredient-details.js";
+import { readPages } from "/static/js/read-pages.js";
 const by = id => document.getElementById(id);
 const tell = message => { by("status").textContent = message; };
 const element = (tag, value) => { const item = document.createElement(tag); item.textContent = value; return item; };
@@ -128,6 +129,12 @@ for (const button of headers) button.onclick = () => {
   sortInventory();
 };
 
+const retiredSearch = new URLSearchParams(location.search).get("retired");
+if (retiredSearch) {
+  by("show-retired").checked = true;
+  by("stock-search").value = retiredSearch;
+}
+
 by("stock-search").addEventListener("input", sortInventory);
 by("stock-category").addEventListener("change", () => {
   by("stock-form").value = "";
@@ -164,12 +171,15 @@ function displayUnitCost(item, cell, retailCell) {
 
 async function inventory() {
   const version = ++loadVersion;
-  const { data, error } = await db.from("inventory_items")
-    .select("owner_id,master_item_id,is_active,in_stock,purchase_total_cost,purchase_weight_grams,supplier,manufacturer,stock_quantity,stock_unit,purchase_quantity,purchase_unit,markup_percent,master_items(name,category,form,density_g_per_ml)")
-    .order("master_item_id");
+  let data;
+  try {
+    data = await readPages("inventory_items", "owner_id,master_item_id,is_active,in_stock,purchase_total_cost,purchase_weight_grams,supplier,manufacturer,stock_quantity,stock_unit,purchase_quantity,purchase_unit,markup_percent,master_items(name,category,form,density_g_per_ml)", "master_item_id");
+  } catch {
+    if (version === loadVersion) tell("Could not load your inventory.");
+    return;
+  }
   if (version !== loadVersion || by("workspace").hidden) return;
   by("stock").replaceChildren();
-  if (error) return tell("Could not load your inventory.");
   inventoryRows = [];
   by("stock-empty").hidden = Boolean(data.length);
   for (const item of data) {

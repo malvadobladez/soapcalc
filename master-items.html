@@ -96,12 +96,7 @@
       <div id="counts" class="catalog-counts" aria-live="polite" hidden></div>
     </div>
     <p id="status" role="status">Connecting…</p>
-    <form id="login" class="grimoire-login mt-4" hidden>
-      <label>Email <input name="email" class="input input-bordered rounded-full" type="email" autocomplete="username" required></label>
-      <label>Password <input name="password" class="input input-bordered rounded-full" type="password" autocomplete="current-password" required></label>
-      <button class="btn btn-primary rounded-full">Sign in</button>
-      <a href="/signup.html" class="btn btn-ghost grimoire-account-pill">Create account</a>
-    </form>
+
     <div id="workspace" hidden>
       <div class="catalog-toolbar">
         <input id="search" type="search" class="input input-bordered bg-base-100" aria-label="Search the catalog" placeholder="Search the catalog…">
@@ -563,23 +558,12 @@ function show(session) {
   admin = session?.user.app_metadata?.catalog_admin === true;
   by("catalog-admin").hidden = !admin;
   if (!session) { bulkMode = false; selected.clear(); by("editor").close(); }
-  by("login").hidden = Boolean(session);
+
   by("workspace").hidden = !session;
   if (session) { tell(""); void catalog(); }
   else { ++revision; items = []; owned.clear(); render(); tell("Sign in to view the catalog and your inventory."); }
 }
 
-by("login").onsubmit = async event => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const fields = new FormData(form);
-  const button = form.querySelector("button");
-  button.disabled = true;
-  const { error } = await db.auth.signInWithPassword({ email: fields.get("email"), password: fields.get("password") });
-  button.disabled = false;
-  form.reset();
-  if (error) tell("Sign-in failed. Check your email and password.");
-};
 
 const filter = () => { page = 0; render(); };
 by("search").addEventListener("input", filter);

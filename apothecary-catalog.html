@@ -695,6 +695,13 @@ async function openPreview(payload, title, supplier, inBatch = false) {
     }
     opsStatus.textContent = choices.length ? "Select the changes to apply." : "No new suggestions or products.";
     if (conflicts) opsStatus.textContent += " Skipped " + conflicts + " supplier titles with conflicting or missing names.";
+    if (!supplier && data.review) {
+      const score = data.review.confidence;
+      const review = element("p", (score == null ? "AI confidence unavailable" : "AI confidence: " + score + " / 1") +
+        (data.review.human_review_needed ? " · Human review recommended" : ""));
+      review.className = "text-sm mt-2";
+      opsChoices.prepend(review);
+    }
     opsApply.hidden = !choices.length;
     opsApply.onclick = async () => {
       if (!active() || opsApply.disabled) return;
@@ -708,7 +715,7 @@ async function openPreview(payload, title, supplier, inBatch = false) {
         } else {
           const timestamp = new Date().toISOString();
           const metadata = { ...data.metadata, ...Object.fromEntries(selected), metadata_updated_at:timestamp,
-            ai_refresh:{ model:data.model, fields:selected.map(([field]) => field), applied_at:timestamp } };
+            ai_refresh:{ model:data.model, ...data.review, fields:selected.map(([field]) => field), applied_at:timestamp } };
           query = db.from("master_items").update({ metadata }).eq("id",payload.id);
           query = data.metadata == null ? query.is("metadata",null) : query.eq("metadata",JSON.stringify(data.metadata));
         }

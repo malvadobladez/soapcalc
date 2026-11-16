@@ -149,6 +149,10 @@ let editIds = [];
 const selected = new Set();
 
 const catalogEditor = by("edit-form");
+let editorSaving = false;
+by("editor").addEventListener("cancel", event => {
+  if (editorSaving) event.preventDefault();
+});
 const editorCategory = item => item?.item_class || item?.category || "";
 
 function setEditorForms() {
@@ -166,7 +170,7 @@ catalogEditor.elements.category.onchange = () => {
 };
 
 function edit(ids = []) {
-  if (!admin) return;
+  if (editorSaving || !admin) return;
   const form = by("edit-form");
   const item = ids.length === 1 ? items.find(row => row.id === ids[0]) : null;
   editIds = ids;
@@ -198,12 +202,13 @@ by("edit-selected").onclick = () => {
   if (selected.size) edit([...selected]);
   else tell("Select at least one catalog item.");
 };
-by("close-editor").onclick = () => by("editor").close();
+by("close-editor").onclick = () => { if (!editorSaving) by("editor").close(); };
 by("edit-form").onsubmit = async event => {
   event.preventDefault();
-  if (!admin) return;
+  if (!admin || editorSaving) return;
   const form = event.currentTarget;
-  const submit = form.querySelector("button");
+  const submit = form.querySelector('[type="submit"]');
+  const ids = [...editIds];
   const bulk = editIds.length > 1;
   const values = {};
   for (const [field, raw] of new FormData(form)) {
@@ -224,19 +229,37 @@ by("edit-form").onsubmit = async event => {
     by("edit-status").textContent = bulk ? "Enter at least one change." : "Enter a name.";
     return;
   }
-  submit.disabled = true;
-  const query = editIds.length
-    ? db.from("master_items").update(values).in("id", editIds)
-    : db.from("master_items").insert(values);
-  const { data, error } = await query.select("id");
-  submit.disabled = false;
-  if (error || data?.length !== (editIds.length || 1)) {
-    by("edit-status").textContent = "Could not save the catalog changes. Check access and item names.";
-    return;
+  if (bulk && (values.category || values.form)) {
+    const invalid = items.filter(item => {
+      if (!ids.includes(item.id)) return false;
+      const category = values.category ?? editorCategory(item);
+      const form = values.form ?? item.form;
+      if (category === editorCategory(item) && form === item.form) return false;
+      return !form || !items.some(entry => editorCategory(entry) === category && entry.form === form);
+    });
+    if (invalid.length) {
+      const names = invalid.slice(0, 4).map(item => item.name).join(", ");
+      by("edit-status").textContent = "Choose a form valid for the resulting category for " + names +
+        (invalid.length > 4 ? " and " + (invalid.length - 4) + " more." : ".");
+      return;
+    }
   }
-  by("editor").close();
-  selected.clear();
-  await catalog();
+
+  editorSaving = submit.disabled = by("close-editor").disabled = true;
+  try {
+    const query = ids.length
+      ? db.from("master_items").update(values).in("id", ids)
+      : db.from("master_items").insert(values);
+    const { data, error } = await query.select("id");
+    if (error || data?.length !== (ids.length || 1)) throw error ?? new Error("Unexpected saved row count");
+    by("editor").close();
+    selected.clear();
+    await catalog();
+  } catch {
+    by("edit-status").textContent = "Could not save the catalog changes. Check access and item names.";
+  } finally {
+    editorSaving = submit.disabled = by("close-editor").disabled = false;
+  }
 };
 
 import { readPages } from "/static/js/read-pages.js";

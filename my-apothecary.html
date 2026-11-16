@@ -18,6 +18,7 @@
     .grimoire-logo { width:8rem; }
     @media (min-width:768px) { .grimoire-mobile { display:none; } }
   </style>
+  <script defer src="/static/js/grimoire-nav.js"></script>
 </head>
 <body class="app-shell antialiased">
 <div class="workspace-frame">
@@ -26,23 +27,14 @@
         <img class="sidebar-brand-logo grimoire-logo" src="/static/img/brand/site-logo.jpg" width="400" height="400" alt="">
         <p class="section-kicker">The Hidden Grimoire</p>
       </div>
-      <nav class="grimoire-nav grimoire-sidebar-nav py-4" aria-label="Workspace">
-        <a href="/" title="Return to The Grimoire homepage">The Grimoire</a>
-        <a href="/my-apothecary" aria-current="page" title="Open your personal inventory and purchase costs">My Apothecary</a>
-        <a href="/apothecary-catalog" title="Browse the Apothecary Catalog">Apothecary Catalog</a>
-        <a href="/#leaves" title="See the Tea Recipes preview">Tea Recipes</a>
-        <a href="/#calculus" title="See the Soap Calculator preview">Soap Calculator</a>
-      </nav>
+      <nav class="grimoire-nav grimoire-sidebar-nav py-4" aria-label="Workspace" data-grimoire-nav="/my-apothecary"></nav>
       <div class="sidebar-art-shell">
         <img class="sidebar-art-image" src="/static/img/brand/sidebar-art.jpg" width="400" height="400" alt="" decoding="async">
       </div>
     </aside>
 <main class="workspace-main">
   <header class="surface-panel px-5 py-4" data-grimoire-header="My Apothecary">
-    <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace">
-          <a href="/" title="Return to The Grimoire homepage">The Grimoire</a><a href="/my-apothecary" aria-current="page" title="Open your personal inventory and purchase costs">My Apothecary</a><a href="/apothecary-catalog" title="Browse the Apothecary Catalog">Apothecary Catalog</a>
-          <a href="/#leaves" title="See the Tea Recipes preview">Tea Recipes</a><a href="/#calculus" title="See the Soap Calculator preview">Soap Calculator</a>
-        </nav>
+    <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace" data-grimoire-nav="/my-apothecary"></nav>
   </header>
   <section class="surface-panel p-6">
     <p class="section-kicker">Personal Inventory</p>

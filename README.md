@@ -26,10 +26,19 @@ GitHub holds the website and versioned SQL migrations. Cloudflare Pages deploys 
 
 The overview, Apothecary Catalog, and Inventory are deployed. The catalog was seeded from Brenda. Current QA covers signed-in Add and Edit, the Inventory handoff, stock and price saves, retire and restore, responsive layout, and account isolation. Full browser verification and remaining Brenda workflow parity are in progress.
 
-Once Apothecary Catalog and Inventory are verified, the next workspace will be chosen between Soap Calc and Herbal Preparations. Metadata refresh, supplier sync, and GPT workflows are pending. Calculator migration will preserve approved formulas and ingredient values, with independent comparison against Brenda before release.
+Once Apothecary Catalog and Inventory are verified, the next workspace will be chosen between Soap Calc and Herbal Preparations. Ask the Grimoire is deployed. Admin catalog tools include AI metadata and supplier previews with explicit application of selected changes. Calculator migration will preserve approved formulas and ingredient values, with independent comparison against Brenda before release.
 
 ## Interface conventions
 
 Add a short hover hint to each new action button. Describe what the action does and keep the button’s visible label meaningful by itself.
 
 Workspace pages use the existing `workspace-frame` and `workspace-main` layout. Mount the shared sidebar with `data-grimoire-sidebar` and the mobile menu with `data-grimoire-nav`, passing the page route to each. Load `static/js/grimoire-nav.js` and `static/css/grimoire-account.css` for the shared markup, links, and styles. Profile uses the same navigation links in its account layout.
+
+## Data naming and recipe roadmap
+
+| Page | Database table |
+| --- | --- |
+| Apothecary Catalog | `master_items` |
+| My Apothecary | `inventory_items` |
+
+- [ ] Add a Shared Recipes section. Each recipe has exactly two visibility options, **Private** (owner only, default) or **Shared with everyone**. Sharing grants read access. Editing stays with the owner. There is no per-person or group sharing. Enforce visibility in database policies and keep personal inventory and costs private.

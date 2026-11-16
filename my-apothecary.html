@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/static/css/app.css">
   <link rel="stylesheet" href="/static/css/grimoire-account.css">
+<link rel="stylesheet" href="/static/css/apothecary-table.css">
 <style>
     .grimoire-nav { display:flex; flex-wrap:wrap; gap:.25rem .75rem; }
     .grimoire-nav a { padding:.3rem .5rem; text-decoration:underline; text-underline-offset:.2em; }
@@ -57,7 +58,7 @@
       </div>
       <label class="block mt-4"><input id="show-retired" type="checkbox" class="checkbox checkbox-sm"> Show retired items</label>
       <p id="stock-empty" class="mt-4" hidden>Your inventory is empty.</p>
-      <div style="overflow:auto"><table class="table mt-4">
+      <div class="catalog-scroll mt-4"><table class="table catalog-grid">
         <thead><tr>
           <th scope="col"><button type="button" data-sort="name" title="Sort by ingredient">Ingredient</button></th>
           <th scope="col"><button type="button" data-sort="in_stock" title="Sort by stock status">In Stock</button></th>
@@ -75,6 +76,7 @@
 </div>
 <script data-cfasync="false" type="module">
 import { db } from "/static/js/grimoire-account.js?v=floating-chat-1";
+import { viewItem } from "/static/js/ingredient-details.js";
 const by = id => document.getElementById(id);
 const tell = message => { by("status").textContent = message; };
 const element = (tag, value) => { const item = document.createElement(tag); item.textContent = value; return item; };
@@ -111,11 +113,12 @@ function sortInventory() {
     const comparison = ["name", "supplier"].includes(sortKey) ? a.localeCompare(b) : Number(a) - Number(b);
     return direction * comparison || left.master_item_id - right.master_item_id;
   });
-  for (const { row, item } of inventoryRows) {
+  for (const { row, item, detailRow, toggle } of inventoryRows) {
     row.hidden = (!item.is_active && !by("show-retired").checked) || !inCategory(item) || (Boolean(form.value) && item.master_items?.form !== form.value) ||
       ![item.master_items?.name, item.supplier, item.manufacturer].some(value => (value ?? "").toLowerCase().includes(term));
     if (!row.hidden) visible++;
-    by("stock").append(row);
+    detailRow.hidden = row.hidden || toggle.getAttribute("aria-expanded") !== "true";
+    by("stock").append(row, detailRow);
   }
   by("stock-empty").textContent = inventoryRows.length ? "No matching inventory items." : "Your inventory is empty.";
   by("stock-empty").hidden = visible > 0;
@@ -186,7 +189,34 @@ async function inventory() {
     const count = element("td", "");
     const vendor = element("td", "");
     const price = element("td", "");
-    row.append(element("th", item.master_items?.name ?? "Ingredient"));
+    const name = item.master_items?.name ?? "Ingredient";
+    const toggle = element("button", "+ " + name);
+    toggle.type = "button";
+    toggle.className = "font-semibold";
+    toggle.title = "Expand or collapse the ingredient details";
+    toggle.setAttribute("aria-expanded", "false");
+    const detailRow = document.createElement("tr");
+    detailRow.className = "detail-row";
+    detailRow.hidden = true;
+    const detailCell = document.createElement("td");
+    detailCell.colSpan = 6;
+    const panel = document.createElement("div");
+    panel.className = "detail-panel";
+    panel.id = "stock-details-" + item.master_item_id;
+    panel.setAttribute("aria-live", "polite");
+    toggle.setAttribute("aria-controls", panel.id);
+    detailCell.append(panel);
+    detailRow.append(detailCell);
+    toggle.onclick = () => {
+      const expanded = detailRow.hidden;
+      detailRow.hidden = !expanded;
+      toggle.setAttribute("aria-expanded", String(expanded));
+      toggle.textContent = (expanded ? "− " : "+ ") + name;
+      if (expanded) void viewItem({ id: item.master_item_id }, panel);
+    };
+    const nameCell = document.createElement("th");
+    nameCell.append(toggle);
+    row.append(nameCell);
     row.firstElementChild.scope = "row";
     function field(label, name, type, value, step) {
       const cell = element("label", label + " ");
@@ -335,7 +365,7 @@ async function inventory() {
     };
     actions.append(edit, lifecycle);
     row.append(actions);
-    inventoryRows.push({item, row});
+    inventoryRows.push({ item, row, detailRow, toggle });
   }
   sortInventory();
 }

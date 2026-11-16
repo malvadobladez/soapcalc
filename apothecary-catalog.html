@@ -20,7 +20,9 @@
     .catalog-grid { width:100%; min-width:42rem; }
     .catalog-grid th { background:#efe4d0; text-transform:uppercase; letter-spacing:.12em; }
     .catalog-grid tbody tr:nth-child(even) { background:#efe4d04d; }
-    .catalog-grid :is(th, td) { padding:.65rem .85rem; vertical-align:top; }
+    .catalog-grid :is(th, td) { padding:.32rem .75rem; vertical-align:middle; }
+    .catalog-grid tbody .btn { height:2rem; min-height:2rem; padding-inline:.6rem; border-radius:999px; }
+    .catalog-grid .detail-row td { padding:.55rem .75rem; }
     .catalog-grid summary { cursor:pointer; font-weight:600; }
     .catalog-grid td:last-child { white-space:nowrap; }
     .item-facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(12rem,1fr)); gap:.75rem; margin-top:1rem; }
@@ -89,9 +91,9 @@
   <section class="surface-panel p-6">
     <div class="catalog-heading">
       <div>
-        <p class="section-kicker">Master Catalog</p>
-        <h1 class="dashboard-title mt-2">The wider materia catalog.</h1>
-        <p class="mt-2 text-neutral/75">Search the broader catalog, inspect its lore, and pass chosen rows into stock from one working table.</p>
+        <p class="section-kicker">Ingredient Reference</p>
+        <h1 class="dashboard-title mt-2">The apothecary’s materia.</h1>
+        <p class="mt-2 text-neutral/75">Browse the oils, herbs, scents, and other materials recorded in the Grimoire. Open an entry to see its properties, or add it to My Apothecary to track your own stock and costs.</p>
       </div>
       <div id="counts" class="catalog-counts" aria-live="polite" hidden></div>
     </div>
@@ -485,7 +487,7 @@ function render() {
 
 async function catalog() {
   const request = ++revision;
-  tell("Loading Master Items…");
+  tell("Loading the Apothecary Catalog…");
   try {
     const [catalogRows, inventoryRows] = await Promise.all([
       readPages("master_items", "id,name,category,form,item_class,is_active", "id"),
@@ -495,9 +497,9 @@ async function catalog() {
     items = catalogRows.sort((a, b) => a.name.localeCompare(b.name));
     owned = new Set(inventoryRows.map(row => row.master_item_id));
     render();
-    tell("Loaded " + items.length + " master items.");
+    tell("");
   } catch {
-    if (request === revision) tell("Could not load Master Items and inventory status.");
+    if (request === revision) tell("Could not load the Apothecary Catalog and your inventory status.");
   }
 }
 

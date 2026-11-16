@@ -15,19 +15,14 @@
 </head>
 <body class="antialiased">
   <main class="surface-panel p-6">
-    <nav aria-label="Workspace">
-      <a href="/" class="btn btn-ghost rounded-full">Overview</a>
-      <a href="/master-items.html" class="btn btn-ghost rounded-full">Master Items</a>
-      <a href="/stores.html" class="btn btn-ghost rounded-full">Inventory</a>
-    </nav>
-    <header class="surface-panel px-5 py-4" data-grimoire-header="Create an account"></header>
+    <p class="section-kicker">The Living Grimoire</p>
+    <h1 class="dashboard-title mt-2">Create an account</h1>
     <p class="mt-2">Verify your email before signing in.</p>
     <form class="space-y-4 mt-4">
-      <label>Display name <input class="input input-bordered" name="display_name" autocomplete="nickname" required maxlength="100"></label>
-      <label>Email <input class="input input-bordered" name="email" type="email" autocomplete="email" required maxlength="254"></label>
-      <label>Password <input class="input input-bordered" name="password" type="password" autocomplete="new-password" required minlength="8"></label>
+      <label>Display name <input class="input input-bordered rounded-full" name="display_name" autocomplete="nickname" required maxlength="100"></label>
+      <label>Email <input class="input input-bordered rounded-full" name="email" type="email" autocomplete="email" required maxlength="254"></label>
+      <label>Password <input class="input input-bordered rounded-full" name="password" type="password" autocomplete="new-password" required minlength="8"></label>
       <button type="submit" class="btn btn-primary rounded-full">Create account</button>
-      <a href="/master-items.html" class="btn btn-ghost rounded-full">Sign in</a>
     </form>
     <p id="message" class="mt-4" role="status"></p>
   </main>

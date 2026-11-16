@@ -149,7 +149,7 @@
             <label>Markup % <input class="input input-bordered rounded-full" name="markup_percent" type="number" min="0" max="99999.99" step=".01" value="0"></label>
           </div>
           <p id="handoff-status" role="status"></p>
-          <button type="submit" class="btn btn-primary">Add to Inventory</button>
+          <button type="submit" class="btn btn-primary" title="Add this ingredient to your personal stock list">Add to My Apothecary</button>
           <button id="handoff-cancel" type="button" class="btn btn-ghost">Cancel</button>
         </form>
       </dialog>
@@ -408,13 +408,13 @@ function render() {
   page = Math.min(page, Math.max(0, Math.ceil(visible.length / pageSize) - 1));
   const start = page * pageSize;
   const counts = [
-    ["Rows", items.length], ["In Inventory", owned.size],
-    ["Active", items.filter(item => item.is_active).length], ["Visible", visible.length]
+    ["Total items", items.length], ["In Inventory", owned.size],
+    ["Active", items.filter(item => item.is_active).length], ["Matching filters", visible.length]
   ];
   by("counts").replaceChildren(...counts.map(([label, count]) => {
     const badge = element("span", "");
     badge.className = "catalog-pill";
-    if (label === "Visible") badge.textContent = label + " " + count;
+    if (label === "Matching filters") badge.textContent = label + " " + count;
     else {
       const caption = element("span", label);
       caption.className = "section-kicker";
@@ -463,7 +463,7 @@ function render() {
     view.type = "button";
     view.className = "btn btn-ghost";
     view.onclick = () => toggle.click();
-    const add = element("button", "Inventory");
+    const add = element("button", inInventory ? "In My Apothecary" : "Add to My Apothecary");
     add.type = "button";
     add.className = "btn btn-ghost";
     add.disabled = inInventory || !item.is_active;

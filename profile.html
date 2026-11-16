@@ -30,8 +30,8 @@
     <p id="sign-in" class="mt-4" hidden>Sign in to view your profile.</p>
     <p id="message" class="mt-4" role="status"></p>
   </main>
-  <script type="module">
-    import { db, hasVulgarDisplayName } from "/static/js/grimoire-account.js?v=signup-popup-1";
+  <script data-cfasync="false" type="module">
+    import { db, hasVulgarDisplayName } from "/static/js/grimoire-account.js?v=signup-popup-2";
     const message = document.getElementById("message");
     const form = document.querySelector("form");
     function show(user) {

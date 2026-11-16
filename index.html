@@ -7,6 +7,7 @@
   <title>Overview | The Hidden Grimoire</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/grimoire-account.css">
   <style>
     .grimoire-nav { display:flex; flex-wrap:wrap; gap:.25rem .75rem; }
     .grimoire-nav a { padding:.3rem .5rem; text-decoration:underline; text-underline-offset:.2em; }
@@ -37,10 +38,8 @@
       </div>
     </aside>
     <main id="overview" class="workspace-main">
-      <header class="surface-panel px-5 py-4">
-        <p class="section-kicker">The Living Grimoire</p>
-        <p class="text-xl font-semibold">Overview</p>
-        <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace">
+      <header class="surface-panel px-5 py-4" data-grimoire-header="Overview">
+    <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace">
           <a href="/" aria-current="page">Overview</a><a href="/stores.html">Inventory</a><a href="/master-items.html">Master Items</a>
           <a href="/#leaves">Tea recipes</a><a href="/#calculus">Soap calculator</a>
         </nav>
@@ -77,5 +76,6 @@
       </div>
     </main>
   </div>
+  <script type="module" src="/static/js/grimoire-account.js"></script>
 </body>
 </html>

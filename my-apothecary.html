@@ -59,19 +59,16 @@
       <p id="stock-empty" class="mt-4" hidden>Your inventory is empty.</p>
       <div style="overflow:auto"><table class="table mt-4">
         <thead><tr>
-          <th scope="col"><button type="button" data-sort="name">Name</button></th>
-          <th scope="col"><button type="button" data-sort="in_stock">In stock</button></th>
-          <th scope="col"><button type="button" data-sort="purchase_total_cost">Purchase cost</button></th>
-          <th scope="col"><button type="button" data-sort="purchase_weight_grams">Purchase weight (g)</button></th>
-          <th scope="col"><button type="button" data-sort="supplier">Supplier</button></th>
-          <th scope="col"><button type="button" data-sort="manufacturer">Manufacturer</button></th>
-          <th scope="col"><button type="button" data-sort="stock_quantity">Stock quantity</button></th>
-          <th scope="col"><button type="button" data-sort="stock_unit">Stock unit</button></th>
-          <th scope="col">Cost per base unit</th>
-          <th scope="col">Purchase amount</th><th scope="col">Purchase unit</th><th scope="col">Markup %</th><th scope="col">Retail per unit</th><th scope="col">Actions</th>
+          <th scope="col"><button type="button" data-sort="name" title="Sort by ingredient">Ingredient</button></th>
+          <th scope="col"><button type="button" data-sort="in_stock" title="Sort by stock status">In Stock</button></th>
+          <th scope="col"><button type="button" data-sort="stock_quantity" title="Sort by quantity">Quantity</button></th>
+          <th scope="col"><button type="button" data-sort="supplier" title="Sort by supplier">Supplier</button></th>
+          <th scope="col"><button type="button" data-sort="cost" title="Sort by cost per base unit">Cost</button></th>
+          <th scope="col">Actions</th>
         </tr></thead>
         <tbody id="stock"></tbody>
       </table></div>
+      <dialog id="stock-editor" class="surface-panel p-6" style="margin:auto;width:min(92vw,46rem);max-height:88vh;overflow:auto" aria-labelledby="stock-editor-title"></dialog>
     </div>
   </section>
 </main>
@@ -86,6 +83,10 @@ let inventoryRows = [];
 let sortKey = "name";
 let direction = 1;
 let loadVersion = 0;
+const editor = by("stock-editor");
+editor.addEventListener("cancel", event => {
+  if (editor.querySelector("button:disabled")) event.preventDefault();
+});
 const headers = [...document.querySelectorAll("[data-sort]")];
 
 function sortInventory() {
@@ -102,12 +103,12 @@ function sortInventory() {
   options(form, inventoryRows.filter(({ item }) => inCategory(item)).map(({ item }) => item.master_items?.form), "All forms");
   const term = by("stock-search").value.trim().toLowerCase();
   let visible = 0;
-  const value = item => sortKey === "name" ? item.master_items?.name : item[sortKey];
+  const value = item => sortKey === "name" ? item.master_items?.name : sortKey === "cost" ? unitPrices(item)?.cost : item[sortKey];
   inventoryRows.sort(({ item: left }, { item: right }) => {
     const a = value(left);
     const b = value(right);
     if (a == null || b == null) return Number(a == null) - Number(b == null);
-    const comparison = ["name", "supplier", "manufacturer", "stock_unit"].includes(sortKey) ? a.localeCompare(b) : Number(a) - Number(b);
+    const comparison = ["name", "supplier"].includes(sortKey) ? a.localeCompare(b) : Number(a) - Number(b);
     return direction * comparison || left.master_item_id - right.master_item_id;
   });
   for (const { row, item } of inventoryRows) {
@@ -178,20 +179,27 @@ async function inventory() {
   for (const item of data) {
     const row = document.createElement("tr");
     const form = document.createElement("form");
-    form.id = "stock-item-" + item.master_item_id;
+    const fields = document.createElement("div");
+    fields.className = "grid gap-3 sm:grid-cols-2 mt-4";
+    form.append(fields);
+    const stock = element("td", "");
+    const count = element("td", "");
+    const vendor = element("td", "");
+    const price = element("td", "");
     row.append(element("th", item.master_items?.name ?? "Ingredient"));
     row.firstElementChild.scope = "row";
     function field(label, name, type, value, step) {
-      const cell = document.createElement("td");
+      const cell = element("label", label + " ");
+      cell.className = "block";
       const input = document.createElement("input");
       input.name = name;
       input.type = type;
       if (type === "checkbox") input.checked = value;
       else { input.value = value ?? ""; input.step = step; input.min = name === "grams" ? "0.001" : "0"; }
       input.setAttribute("aria-label", label + " for " + (item.master_items?.name ?? "ingredient"));
-      input.setAttribute("form", form.id);
+      input.className = type === "checkbox" ? "checkbox checkbox-sm" : "input input-bordered w-full";
       cell.append(input);
-      row.append(cell);
+      fields.append(cell);
       return input;
     }
     const stocked = field("In stock", "stocked", "checkbox", item.in_stock);
@@ -205,30 +213,52 @@ async function inventory() {
     const unit = field("Stock unit", "unit", "text", item.stock_unit);
     unit.maxLength = 32;
     const unitCost = document.createElement("td");
-    row.append(unitCost);
+
     const amount = field("Purchase amount", "purchase_amount", "number", item.purchase_quantity, "0.0001");
     amount.min = "0.0001";
-    const unitCell = document.createElement("td");
+    const unitCell = element("label", "Purchase unit ");
     const purchaseUnit = document.createElement("select");
     purchaseUnit.setAttribute("aria-label", "Purchase unit");
-    purchaseUnit.setAttribute("form", form.id);
+    purchaseUnit.className = "select select-bordered w-full";
     purchaseUnit.replaceChildren(new Option("—", ""), ...Object.keys(purchaseUnits).map(value => new Option(value, value)));
     purchaseUnit.value = item.purchase_unit ?? "";
     unitCell.append(purchaseUnit);
-    row.append(unitCell);
+    fields.append(unitCell);
     const markup = field("Markup percent", "markup", "number", item.markup_percent, "0.01");
     markup.max = "99999.99";
     const retail = document.createElement("td");
-    row.append(retail);
-    displayUnitCost(item, unitCost, retail);
+    const pricing = element("p", "");
+    pricing.className = "mt-4";
+    form.append(pricing);
+    function renderSummary() {
+      stock.textContent = item.in_stock ? "Yes" : "No";
+      count.textContent = item.stock_quantity == null ? "—" : [item.stock_quantity, item.stock_unit].filter(Boolean).join(" ");
+      vendor.textContent = item.supplier ?? "—";
+      displayUnitCost(item, unitCost, retail);
+      price.textContent = unitCost.textContent;
+      price.title = unitCost.title || "Cost per base unit";
+      pricing.textContent = "Cost per base unit " + unitCost.textContent + " · Retail per base unit " + retail.textContent;
+    }
+    renderSummary();
+    row.append(stock, count, vendor, price);
     const save = element("button", "Save");
     save.title = "Save changes to this personal inventory item";
-    save.className = "btn btn-primary";
-    form.append(save);
+    save.className = "btn btn-primary rounded-full";
+    const cancel = element("button", "Cancel");
+    cancel.type = "button";
+    cancel.title = "Close without saving";
+    cancel.className = "btn btn-ghost rounded-full";
+    cancel.onclick = () => editor.close();
+    const feedback = element("p", "");
+    feedback.setAttribute("role", "status");
+    const controls = document.createElement("div");
+    controls.className = "flex gap-2 mt-4";
+    controls.append(cancel, save);
+    form.append(feedback, controls);
     form.onsubmit = async event => {
       event.preventDefault();
       if (Boolean(quantity.value) !== Boolean(unit.value.trim())) {
-        tell("Enter both stock quantity and unit, or leave both blank.");
+        feedback.textContent = "Enter both stock quantity and unit, or leave both blank.";
         return;
       }
       if (Boolean(amount.value) !== Boolean(purchaseUnit.value)) {
@@ -242,16 +272,20 @@ async function inventory() {
         purchase_weight_grams: grams.value || null, supplier: supplier.value.trim() || null, manufacturer: manufacturer.value.trim() || null,
         stock_quantity: quantity.value || null, stock_unit: unit.value.trim() || null
       };
-      save.disabled = true;
+      save.disabled = cancel.disabled = true;
       const { data, error } = await db.from("inventory_items").update(updates)
         .eq("master_item_id", item.master_item_id).select("master_item_id").single();
-      save.disabled = false;
+      save.disabled = cancel.disabled = false;
+      if (!row.isConnected) return;
       if (!error && data) {
         Object.assign(item, updates);
-        displayUnitCost(item, unitCost, retail);
+        savedValues = inputs.map(input => input.type === "checkbox" ? input.checked : input.value);
+        renderSummary();
+        if (editor.contains(form)) editor.close();
         sortInventory();
       }
-      tell(error || !data ? "Could not save the inventory item." : "Inventory item saved.");
+      if (error || !data) feedback.textContent = "Could not save the inventory item.";
+      else tell("Inventory item saved.");
     };
     const actions = document.createElement("td");
     const lifecycle = element("button", item.is_active ? "Retire" : "Restore");
@@ -280,7 +314,26 @@ async function inventory() {
     const stockStatus = element("span", item.is_active ? "" : "Retired");
     stockStatus.className = "block text-sm";
     row.firstElementChild.append(stockStatus);
-    actions.append(form, lifecycle);
+    const edit = element("button", "Edit");
+    edit.type = "button";
+    edit.className = "btn btn-ghost rounded-full";
+    edit.title = "Edit stock, purchasing details and pricing";
+    const heading = element("h2", item.master_items?.name ?? "Edit ingredient");
+    heading.id = "stock-editor-title";
+    heading.className = "text-2xl";
+    const inputs = [...form.querySelectorAll("input, select")];
+    let savedValues = inputs.map(input => input.type === "checkbox" ? input.checked : input.value);
+    form.addEventListener("submit", () => { feedback.textContent = ""; }, {capture: true});
+    edit.onclick = () => {
+      inputs.forEach((input, index) => {
+        if (input.type === "checkbox") input.checked = savedValues[index];
+        else input.value = savedValues[index];
+      });
+      feedback.textContent = "";
+      editor.replaceChildren(heading, form);
+      editor.showModal();
+    };
+    actions.append(edit, lifecycle);
     row.append(actions);
     inventoryRows.push({item, row});
   }
@@ -291,7 +344,7 @@ function show(session) {
 
   by("workspace").hidden = !session;
   if (session) { tell(""); void inventory(); }
-  else { ++loadVersion; inventoryRows = []; by("stock").replaceChildren(); tell("Sign in to view the catalog and your inventory."); }
+  else { if (editor.open) editor.close(); ++loadVersion; inventoryRows = []; by("stock").replaceChildren(); tell("Sign in to view the catalog and your inventory."); }
 }
 
 

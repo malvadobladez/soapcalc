@@ -23,12 +23,11 @@
     <header class="surface-panel px-5 py-4" data-grimoire-header="My profile"></header>
     <form class="space-y-4 mt-4" hidden>
       <label>Display name <input class="input input-bordered rounded-full" name="display_name" autocomplete="nickname" maxlength="100"></label>
-      <label>Verified sign-in email <input class="input input-bordered rounded-full" name="login_email" type="email" readonly></label>
-      <label>Contact email <input class="input input-bordered rounded-full" name="contact_email" type="email" autocomplete="email" maxlength="254"></label>
+      <label>Email <input class="input input-bordered rounded-full" name="login_email" type="email" readonly></label>
       <label>Phone <input class="input input-bordered rounded-full" name="contact_phone" type="tel" autocomplete="tel" maxlength="40"></label>
       <button type="submit" class="btn btn-primary rounded-full">Save profile</button>
     </form>
-    <p id="sign-in" class="mt-4" hidden><a href="/master-items.html" class="btn btn-primary rounded-full">Sign in</a></p>
+    <p id="sign-in" class="mt-4" hidden>Sign in to view your profile.</p>
     <p id="message" class="mt-4" role="status"></p>
   </main>
   <script type="module">
@@ -42,7 +41,6 @@
       const profile = user.user_metadata ?? {};
       form.elements.login_email.value = user.email ?? "";
       form.elements.display_name.value = profile.display_name ?? profile.full_name ?? profile.name ?? "";
-      form.elements.contact_email.value = profile.contact_email ?? "";
       form.elements.contact_phone.value = profile.contact_phone ?? "";
     }
     db.auth.onAuthStateChange((event, session) => {
@@ -54,7 +52,7 @@
       const fields = new FormData(form);
       button.disabled = true;
       try {
-        const data = Object.fromEntries(["display_name", "contact_email", "contact_phone"].map(key => [key, fields.get(key).trim()]));
+        const data = Object.fromEntries(["display_name", "contact_phone"].map(key => [key, fields.get(key).trim()]));
         const result = await db.auth.updateUser({ data });
         if (result.error) throw result.error;
         message.textContent = "Profile saved.";

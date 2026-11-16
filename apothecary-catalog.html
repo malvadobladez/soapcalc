@@ -90,13 +90,10 @@
             <label>Manufacturer <input class="input input-bordered rounded-full" name="manufacturer" maxlength="120"></label>
             <label>Purchase cost <input class="input input-bordered rounded-full" name="purchase_total_cost" type="number" min="0" max="99999999.99" step=".01"></label>
             <label>Purchase amount <input class="input input-bordered rounded-full" name="purchase_quantity" type="number" min=".0001" max="9999999999.9999" step=".0001"></label>
-            <label>Purchase unit <select class="select select-bordered" name="purchase_unit">
-              <option value="">Choose a unit</option><option value="g">Grams</option><option value="kg">Kilograms</option>
-              <option value="ml">Millilitres</option><option value="l">Litres</option><option value="oz">Ounces</option>
-              <option value="fl oz">Fluid ounces</option><option value="lb">Pounds</option><option value="each">Each</option>
-            </select></label>
+            <label>Purchase unit <select class="select select-bordered" name="purchase_unit"></select></label>
             <label>Markup % <input class="input input-bordered rounded-full" name="markup_percent" type="number" min="0" max="99999.99" step=".01" value="0"></label>
           </div>
+          <p id="handoff-pricing" class="mt-3"></p>
           <p id="handoff-status" role="status"></p>
           <button type="submit" class="btn btn-primary" title="Add this ingredient to your personal stock list">Add to My Apothecary</button>
           <button id="handoff-cancel" type="button" class="btn btn-ghost">Cancel</button>
@@ -120,6 +117,7 @@
 <script data-cfasync="false" type="module">
 import { db } from "/static/js/grimoire-account.js?v=floating-chat-1";
 import { viewItem } from "/static/js/ingredient-details.js";
+import { purchaseUnitLabels, purchaseCostSummary } from "/static/js/purchase-cost.js";
 const by = id => document.getElementById(id);
 const tell = message => { by("status").textContent = message; };
 let revision = 0;
@@ -372,7 +370,7 @@ async function catalog() {
   tell("Loading the Apothecary Catalog…");
   try {
     const [catalogRows, inventoryRows] = await Promise.all([
-      readPages("master_items", "id,name,category,form,item_class,is_active", "id"),
+      readPages("master_items", "id,name,category,form,item_class,is_active,density_g_per_ml", "id"),
       readPages("inventory_items", "master_item_id,is_active", "master_item_id")
     ]);
     if (request !== revision || by("workspace").hidden) return;
@@ -390,11 +388,27 @@ let handoffSaving = false;
 const handoff = by("inventory-handoff");
 const handoffForm = by("handoff-form");
 
+handoffForm.elements.purchase_unit.replaceChildren(new Option("Choose a unit", ""), ...Object.entries(purchaseUnitLabels).map(([unit, label]) => new Option(label, unit)));
+
+function previewHandoffCost() {
+  if (!handoffItem) return;
+  const fields = new FormData(handoffForm);
+  by("handoff-pricing").textContent = purchaseCostSummary({
+    purchase_total_cost: fields.get("purchase_total_cost"),
+    purchase_quantity: fields.get("purchase_quantity"),
+    purchase_unit: fields.get("purchase_unit"),
+    master_items: handoffItem
+  });
+}
+
+handoffForm.addEventListener("input", previewHandoffCost);
+
 function openHandoff(item) {
   handoffItem = item;
   handoffForm.reset();
   by("handoff-status").textContent = "";
   by("handoff-title").textContent = item.name;
+  previewHandoffCost();
   handoff.showModal();
 }
 

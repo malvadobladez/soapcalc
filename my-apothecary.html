@@ -219,7 +219,6 @@ async function inventory() {
     }
     const stocked = field("In stock", "stocked", "checkbox", item.in_stock);
     const cost = field("Purchase cost", "cost", "number", item.purchase_total_cost, "0.01");
-    const grams = field("Legacy purchase weight (g)", "grams", "number", item.purchase_weight_grams, "0.001");
     const supplier = field("Supplier", "supplier", "text", item.supplier);
     supplier.maxLength = 120;
     const manufacturer = field("Manufacturer", "manufacturer", "text", item.manufacturer);
@@ -247,7 +246,7 @@ async function inventory() {
     form.append(pricing);
     function previewPricing() {
       const draft = {
-        ...item, purchase_total_cost: cost.value, purchase_weight_grams: grams.value,
+        ...item, purchase_total_cost: cost.value,
         purchase_quantity: amount.value, purchase_unit: purchaseUnit.value, markup_percent: markup.value
       };
       const price = unitPrices(draft);
@@ -294,7 +293,7 @@ async function inventory() {
         purchase_quantity: amount.value || null, purchase_unit: purchaseUnit.value || null,
         markup_percent: markup.value || 0,
         in_stock: stocked.checked, purchase_total_cost: cost.value || null,
-        purchase_weight_grams: grams.value || null, supplier: supplier.value.trim() || null, manufacturer: manufacturer.value.trim() || null,
+        supplier: supplier.value.trim() || null, manufacturer: manufacturer.value.trim() || null,
         stock_quantity: quantity.value || null, stock_unit: unit.value.trim() || null
       };
       save.disabled = cancel.disabled = true;

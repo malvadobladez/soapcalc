@@ -440,10 +440,19 @@ handoffForm.onsubmit = async event => {
     }, { onConflict: "owner_id,master_item_id", ignoreDuplicates: true });
     if (request !== revision || !handoff.open) return;
     if (error) throw error;
-    owned.set(item.id, true);
+    const { data: saved, error: readError } = await db.from("inventory_items")
+      .select("is_active").eq("master_item_id", item.id).single();
+    if (request !== revision || !handoff.open) return;
+    if (readError || !saved) {
+      by("handoff-status").textContent = "Could not confirm inventory status. Try again or refresh the catalog.";
+      return;
+    }
+    owned.set(item.id, saved.is_active);
     handoff.close();
     render();
-    tell("Ingredient is in your inventory.");
+    tell(saved.is_active
+      ? "Ingredient is in My Apothecary."
+      : "This ingredient is retired. Use View Retired Item to restore it in My Apothecary.");
   } catch {
     if (request === revision && handoff.open) by("handoff-status").textContent = "Could not add the ingredient. Try again.";
   } finally {

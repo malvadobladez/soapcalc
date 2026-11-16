@@ -26,7 +26,11 @@ export function bindSignup(form, message) {
       if (error && !["user_already_exists", "email_exists"].includes(error.code)) throw error;
       form.reset();
       message.textContent = "If this address can be registered, check your inbox for a verification link. If you already verified this email, sign in.";
-    } catch { message.textContent = "Could not submit signup. Check your details or try again shortly."; }
+    } catch (error) {
+      message.textContent = error?.status === 429 || ["over_email_send_rate_limit", "over_request_rate_limit"].includes(error?.code)
+        ? "Too many signup or verification email requests. Wait before trying again."
+        : "Could not submit signup. Check your details or try again shortly.";
+    }
     finally { button.disabled = false; }
   };
 }

@@ -103,10 +103,14 @@ export function mountGrimoireChat(db) {
     submit.disabled = true;
     status.textContent = "Waiting for the Grimoire…";
     try {
-      const { data, error } = await db.functions.invoke("workspace-chat", { body: { message, history } });
+      const { data, error } = await db.functions.invoke("workspace-chat", { body: { message, history: history.map(({ role, content }) => ({ role, content: content.slice(0, 2000) })) } });
       if (request !== revision) return;
+      if (data?.status === "incomplete") {
+        status.textContent = "The Grimoire could not finish its reply. Try asking a narrower question.";
+        return;
+      }
       if (error || typeof data?.answer !== "string" || !data.answer.trim()) throw new Error("No answer");
-      history = [...history, { role: "user", content: message }, { role: "assistant", content: data.answer.slice(0, 2000) }].slice(-6);
+      history = [...history, { role: "user", content: message }, { role: "assistant", content: data.answer }].slice(-6);
       try { sessionStorage.setItem(key, JSON.stringify({ owner, history })); } catch {}
       if (question.value.trim() === message) question.value = "";
       status.textContent = "";

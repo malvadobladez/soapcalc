@@ -56,10 +56,17 @@
               <a class="btn btn-ghost rounded-full px-6" href="#calculus">Enter the Calculus</a>
             </div>
           </div>
-          <div id="stores" class="surface-panel bg-base-200/70 p-6">
-            <h2 class="overview-script-subtitle">The Stores</h2>
-            <p class="mt-4">Sign in to browse the shared ingredient catalog and manage your private stock and costs.</p>
-          </div>
+          <section class="surface-panel bg-base-200/70 p-6" aria-labelledby="chat-title">
+            <h2 id="chat-title" class="overview-script-subtitle">Ask the Grimoire.</h2>
+            <p id="chat-status" class="mt-2" role="status">Sign in as a catalog admin to try the assistant.</p>
+            <div id="chat-transcript" role="log" aria-label="Conversation" class="space-y-4 mt-4" style="max-height:22rem;overflow:auto"></div>
+            <form id="workspace-chat" class="space-y-4 mt-4" hidden>
+              <label for="chat-question">Ask about soap, tea, ingredients, or your workspace.</label>
+              <textarea id="chat-question" class="textarea textarea-bordered w-full bg-base-100" rows="3" maxlength="2000" required></textarea>
+              <button type="submit" class="btn btn-primary rounded-full">Ask the Grimoire</button>
+              <button type="button" id="chat-clear" class="btn btn-ghost rounded-full">Clear conversation</button>
+            </form>
+          </section>
         </div>
       </section>
       <div class="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -76,6 +83,69 @@
       </div>
     </main>
   </div>
-  <script data-cfasync="false" type="module" src="/static/js/grimoire-account.js?v=signup-popup-2"></script>
+  <script data-cfasync="false" type="module">
+    import { db } from "/static/js/grimoire-account.js?v=signup-popup-2";
+    const form = document.getElementById("workspace-chat");
+    const question = document.getElementById("chat-question");
+    const transcript = document.getElementById("chat-transcript");
+    const status = document.getElementById("chat-status");
+    const submit = form.querySelector('button[type="submit"]');
+    const clear = document.getElementById("chat-clear");
+    let history = [];
+    let accountId = null;
+    let revision = 0;
+    function reset() {
+      revision++;
+      history = [];
+      form.reset();
+      transcript.replaceChildren();
+      submit.disabled = false;
+      status.textContent = "";
+    }
+    function append(label, content) {
+      const entry = document.createElement("div");
+      const heading = document.createElement("strong");
+      heading.textContent = label;
+      const body = document.createElement("p");
+      body.style.whiteSpace = "pre-wrap";
+      body.style.overflowWrap = "anywhere";
+      body.textContent = content;
+      entry.append(heading, body);
+      transcript.append(entry);
+      transcript.scrollTop = transcript.scrollHeight;
+    }
+    clear.onclick = reset;
+    db.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user;
+      const allowed = Boolean(user?.email_confirmed_at && user?.app_metadata?.catalog_admin === true);
+      const nextId = allowed ? user.id : null;
+      if (nextId !== accountId) reset();
+      accountId = nextId;
+      form.hidden = !allowed;
+      if (!allowed) status.textContent = user ? "The assistant is available to catalog admins during testing." : "Sign in as a catalog admin to try the assistant.";
+    });
+    form.onsubmit = async event => {
+      event.preventDefault();
+      const message = question.value.trim();
+      if (!accountId || !message || submit.disabled) return;
+      const request = ++revision;
+      submit.disabled = true;
+      status.textContent = "Waiting for the Grimoire…";
+      try {
+        const { data, error } = await db.functions.invoke("workspace-chat", { body: { message, history } });
+        if (request !== revision) return;
+        if (error || typeof data?.answer !== "string" || !data.answer.trim()) throw new Error("No answer");
+        append("You", message);
+        append("The Grimoire", data.answer);
+        history = [...history, { role: "user", content: message }, { role: "assistant", content: data.answer.slice(0, 2000) }].slice(-6);
+        if (question.value.trim() === message) question.value = "";
+        status.textContent = "";
+      } catch {
+        if (request === revision) status.textContent = "Could not get a reply. Your question is still here. Try again.";
+      } finally {
+        if (request === revision) submit.disabled = false;
+      }
+    };
+  </script>
 </body>
 </html>

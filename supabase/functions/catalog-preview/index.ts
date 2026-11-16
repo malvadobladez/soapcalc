@@ -225,8 +225,8 @@ const sources = {
 function herbalProductName(title: string, form: string) {
   const raw = title.trim().replace(/\s+/g, " ");
   const cutPrefix = /^cut\s*(?:&|and)?\s*sifted\s+/i;
-  const cutSuffix = /(?:^|[\s,;:–—-]+|(?=[([]))[(\[]?(?:c\s*\/\s*s|c\.?\s*s\.?|cut\s*(?:&|and)?\s*sifted)[)\]]?$/i;
-  const wholeSuffix = /(?:^|[\s,;:–—-]+|(?=[([]))[(\[]?whole[)\]]?(?:\s*[(\[][^\])]*[)\]])?$/i;
+  const cutSuffix = /(?:^|[\s,;:–—-]+|(?=[([]))[(\[]?(?:c\s*\/\s*s|c\.?\s*s\.?|cut\s*(?:&|and)?\s*sifted)[)\]]?(?=\s*(?:\([^()]*\)|\[[^\[\]]*\])?\s*$)/i;
+  const wholeSuffix = /(?:^|[\s,;:–—-]+|(?=[([]))[(\[]?whole[)\]]?(?=\s*(?:\([^()]*\)|\[[^\[\]]*\])?\s*$)/i;
   const clean = value => value.trim().replace(/^[\s,;:–—-]+|[\s,;:–—-]+$/g, "");
   if (form === "Tea") return { name: raw, conflict: false };
   let name = raw;

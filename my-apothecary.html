@@ -61,6 +61,7 @@
 import { db } from "/static/js/grimoire-account.js?v=floating-chat-1";
 import { viewItem } from "/static/js/ingredient-details.js";
 import { readPages } from "/static/js/read-pages.js";
+import { purchaseUnitLabels, purchaseCostSummary, unitPrices } from "/static/js/purchase-cost.js";
 const by = id => document.getElementById(id);
 const tell = message => { by("status").textContent = message; };
 const element = (tag, value) => { const item = document.createElement(tag); item.textContent = value; return item; };
@@ -141,23 +142,6 @@ by("stock-category").addEventListener("change", () => {
 by("stock-form").addEventListener("change", sortInventory);
 by("show-retired").addEventListener("change", sortInventory);
 
-const purchaseUnits = {
-  g: [1, "g"], kg: [1000, "g"], lb: [453.592, "g"], oz: [28.3495, "g"],
-  ml: [1, "mL"], l: [1000, "mL"], "fl oz": [29.5735295625, "mL"],
-  each: [1, "each"], unit: [1, "each"], piece: [1, "each"], pcs: [1, "each"]
-};
-
-function unitPrices(item) {
-  const unit = item.purchase_unit ? purchaseUnits[item.purchase_unit] : purchaseUnits.g;
-  const quantity = Number(item.purchase_unit ? item.purchase_quantity : item.purchase_weight_grams);
-  if (!unit || !(quantity > 0) || item.purchase_total_cost == null) return null;
-  const [factor, base] = unit;
-  const cost = Number((Number(item.purchase_total_cost) / (quantity * factor)).toFixed(6));
-  const density = Number(item.master_items?.density_g_per_ml);
-  const perGram = base === "g" ? cost : base === "mL" && density > 0 ? Number((cost / density).toFixed(6)) : null;
-  return { cost, base, perGram, retail: cost * (1 + Number(item.markup_percent ?? 0) / 100) };
-}
-
 function displayUnitCost(item, cell, retailCell) {
   const price = unitPrices(item);
   item.cost_per_gram = price?.perGram ?? null;
@@ -235,7 +219,7 @@ async function inventory() {
     }
     const stocked = field("In stock", "stocked", "checkbox", item.in_stock);
     const cost = field("Purchase cost", "cost", "number", item.purchase_total_cost, "0.01");
-    const grams = field("Purchase weight (g)", "grams", "number", item.purchase_weight_grams, "0.001");
+    const grams = field("Legacy purchase weight (g)", "grams", "number", item.purchase_weight_grams, "0.001");
     const supplier = field("Supplier", "supplier", "text", item.supplier);
     supplier.maxLength = 120;
     const manufacturer = field("Manufacturer", "manufacturer", "text", item.manufacturer);
@@ -251,7 +235,7 @@ async function inventory() {
     const purchaseUnit = document.createElement("select");
     purchaseUnit.setAttribute("aria-label", "Purchase unit");
     purchaseUnit.className = "select select-bordered w-full";
-    purchaseUnit.replaceChildren(new Option("—", ""), ...Object.keys(purchaseUnits).map(value => new Option(value, value)));
+    purchaseUnit.replaceChildren(new Option("—", ""), ...Object.entries(purchaseUnitLabels).map(([unit, label]) => new Option(label, unit)));
     purchaseUnit.value = item.purchase_unit ?? "";
     unitCell.append(purchaseUnit);
     fields.append(unitCell);
@@ -261,6 +245,16 @@ async function inventory() {
     const pricing = element("p", "");
     pricing.className = "mt-4";
     form.append(pricing);
+    function previewPricing() {
+      const draft = {
+        ...item, purchase_total_cost: cost.value, purchase_weight_grams: grams.value,
+        purchase_quantity: amount.value, purchase_unit: purchaseUnit.value, markup_percent: markup.value
+      };
+      const price = unitPrices(draft);
+      pricing.textContent = purchaseCostSummary(draft) +
+        (price ? " · Retail " + price.retail.toFixed(6) + " / " + price.base : "");
+    }
+    form.addEventListener("input", previewPricing);
     function renderSummary() {
       stock.textContent = item.in_stock ? "Yes" : "No";
       count.textContent = item.stock_quantity == null ? "—" : [item.stock_quantity, item.stock_unit].filter(Boolean).join(" ");
@@ -268,7 +262,7 @@ async function inventory() {
       displayUnitCost(item, unitCost, retail);
       price.textContent = unitCost.textContent;
       price.title = unitCost.title || "Cost per base unit";
-      pricing.textContent = "Cost per base unit " + unitCost.textContent + " · Retail per base unit " + retail.textContent;
+      previewPricing();
     }
     renderSummary();
     row.append(stock, count, vendor, price);
@@ -362,6 +356,7 @@ async function inventory() {
       });
       feedback.textContent = "";
       editor.replaceChildren(heading, form);
+      previewPricing();
       editor.showModal();
     };
     const remove = element("button", "Remove");

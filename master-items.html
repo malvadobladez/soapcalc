@@ -251,7 +251,7 @@ async function viewItem(item, panel) {
   const footer = document.createElement("div");
   footer.className = "compact-footer";
   const date = value => value?.slice(0, 10);
-  append(footer, "span", [["Unknown fields", d.unknown_fields], ["Confidence", d.confidence], ["Source", d.source],
+  append(footer, "span", [["Confidence", d.confidence], ["Source", d.source],
     ["Last refresh", date(d.metadata_updated_at)], ["Created", date(d.created_at)], ["ID", d.id]]);
   if (grid.childElementCount) panel.append(grid);
   if (footer.childElementCount) panel.append(footer);

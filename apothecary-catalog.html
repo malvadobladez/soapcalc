@@ -6,17 +6,10 @@
 <title>Apothecary Catalog | The Hidden Grimoire</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/static/css/app.css">
-  <link rel="stylesheet" href="/static/css/grimoire-account.css">
+  <link rel="stylesheet" href="/static/css/grimoire-account.css?v=workspace-shell">
 <link rel="stylesheet" href="/static/css/apothecary-table.css?v=shared-toolbar">
 <style>
-    .grimoire-nav { display:flex; flex-wrap:wrap; gap:.25rem .75rem; }
-    .grimoire-nav a { padding:.3rem .5rem; text-decoration:underline; text-underline-offset:.2em; }
-    .grimoire-sidebar-nav { flex-direction:column; }
-    .grimoire-sidebar-nav a { display:block; border-radius:.85rem; }
-    .grimoire-nav a[aria-current='page'] { background:#efe4d0; color:#355846; }
-    .grimoire-mobile { display:flex; }
-    .grimoire-logo { width:8rem; }
-    @media (min-width:768px) { .grimoire-mobile { display:none; } }
+
       .entry-dialog { margin:auto; width:min(92vw,46rem); max-height:88vh; overflow:auto; }
     .entry-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
     .entry-grid label { display:grid; gap:.25rem; min-width:0; }
@@ -39,20 +32,11 @@
 
 
   </style>
-  <script defer src="/static/js/grimoire-nav.js"></script>
+  <script defer src="/static/js/grimoire-nav.js?v=workspace-shell"></script>
 </head>
 <body class="app-shell antialiased">
 <div class="workspace-frame">
-<aside class="workspace-sidebar surface-panel p-5">
-      <div class="sidebar-brand">
-        <img class="sidebar-brand-logo grimoire-logo" src="/static/img/brand/site-logo.jpg" width="400" height="400" alt="">
-        <p class="section-kicker">The Hidden Grimoire</p>
-      </div>
-      <nav class="grimoire-nav grimoire-sidebar-nav py-4" aria-label="Workspace" data-grimoire-nav="/apothecary-catalog"></nav>
-      <div class="sidebar-art-shell">
-        <img class="sidebar-art-image" src="/static/img/brand/sidebar-art.jpg" width="400" height="400" alt="" decoding="async">
-      </div>
-    </aside>
+<aside class="workspace-sidebar surface-panel p-5" data-grimoire-sidebar="/apothecary-catalog"></aside>
 <main class="workspace-main">
   <header class="surface-panel px-5 py-4" data-grimoire-header="Apothecary Catalog">
     <nav class="grimoire-nav grimoire-mobile" aria-label="Workspace" data-grimoire-nav="/apothecary-catalog"></nav>

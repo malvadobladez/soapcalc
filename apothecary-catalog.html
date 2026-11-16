@@ -648,13 +648,18 @@ async function openPreview(payload, title, supplier, inBatch = false) {
     if (error) throw error;
     const choices = [];
     let conflicts = 0;
-    const add = (text, value, originalTitle) => {
+    const add = (text, value, originalTitle, currentValue) => {
       const input = document.createElement("input");
       input.type = "checkbox";
       input.className = "checkbox checkbox-sm";
       const label = document.createElement("label");
       label.className = "flex items-start gap-2 mb-2";
       const copy = element("span", text);
+      if (currentValue) {
+        const detail = element("small", currentValue);
+        detail.className = "block text-neutral/75";
+        copy.append(detail);
+      }
       if (originalTitle) {
         const detail = element("small", "Original supplier title: " + originalTitle);
         detail.className = "block text-neutral/75";
@@ -665,10 +670,10 @@ async function openPreview(payload, title, supplier, inBatch = false) {
       choices.push({ input, value });
     };
     if (!supplier) {
-      for (const [field,label] of [["common_names","Common names"],["usage_context","Usage context"]]) {
+      for (const [field,label] of Object.entries(data.fields ?? { common_names:"Common names", usage_context:"Usage context" })) {
         const current = data.metadata?.[field];
         const suggested = data.suggestions?.[field];
-        if (suggested && suggested !== current) add(label + " · Current: " + (current ?? "—") + " · Suggested: " + suggested, [field,suggested]);
+        if (suggested && suggested !== current) add(label + " · Suggested: " + suggested, [field,suggested], null, "Current: " + (current ?? "—"));
       }
     } else {
       const nameKey = name => name.trim().replace(/\s+/g, " ").toLowerCase();

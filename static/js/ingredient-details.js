@@ -63,7 +63,7 @@ export async function viewItem(item, panel) {
     ["Regulatory notes", d.regulatory_notes], ["Pregnancy/lactation", d.pregnancy_lactation_notes],
     ["Confidence reason", d.confidence_reason], ["Notes", d.notes]
   ]);
-  block(right, [["Colorant profile", d.colorant_profile], ["Colorant source", d.colorant_profile_source_url], ["Image source", d.image_source]]);
+  block(right, [["Colorant profile", d.colorant_profile], ["Colorant source", d.colorant_profile_source_url]]);
   if (left.childElementCount) grid.append(left);
   if (right.childElementCount) grid.append(right);
   if (grid.childElementCount === 1) grid.style.gridTemplateColumns = "1fr";
@@ -95,7 +95,7 @@ export async function viewItem(item, panel) {
     footer.append(line);
   }
   if (host) supplierLink("Supplier", "https://" + host, suppliers[host]);
-  if (productUrl) supplierLink("Product", productUrl.href, "View supplier listing");
+  if (productUrl) supplierLink("Product", productUrl.href, "View original supplier listing");
   if (grid.childElementCount) panel.append(grid);
   if (footer.childElementCount) panel.append(footer);
 }

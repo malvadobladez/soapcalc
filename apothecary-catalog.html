@@ -14,6 +14,7 @@
     .entry-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
     .entry-grid label { display:grid; gap:.25rem; min-width:0; }
     .entry-grid input, .entry-grid select { width:100%; min-width:0; }
+    .entry-grid [hidden], #edit-status:empty { display:none; }
     .entry-grid #name-field { grid-column:1/-1; }
     @media(max-width:540px) { .entry-grid { grid-template-columns:1fr; } }
       .catalog-heading { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:.75rem 1rem; }
@@ -71,14 +72,16 @@
         <form id="edit-form" class="space-y-4">
           <h2 id="edit-title" class="text-2xl">Catalog item</h2>
           <div class="entry-grid">
-          <label id="name-field">Name <input name="name" class="input input-bordered" maxlength="255"></label>
-          <label>Category <select name="category" class="select select-bordered"></select></label>
-          <label>Form <input name="form" class="input input-bordered" maxlength="50" list="catalog-editor-forms"><datalist id="catalog-editor-forms"></datalist></label>
+            <label id="name-field">Name <input name="name" class="input input-bordered" maxlength="255"></label>
+            <label>Category <select name="category" class="select select-bordered"></select></label>
+            <label>Form <input name="form" class="input input-bordered" maxlength="50" list="catalog-editor-forms"><datalist id="catalog-editor-forms"></datalist></label>
+            <label>Status <select name="is_active" class="select select-bordered"><option value="">Keep existing</option><option value="true">Active</option><option value="false">Inactive</option></select></label>
           </div>
-          <label>Status <select name="is_active" class="select select-bordered"><option value="">Keep existing</option><option value="true">Active</option><option value="false">Inactive</option></select></label>
           <p id="edit-status" role="status"></p>
-          <button class="btn btn-primary">Save</button>
-          <button id="close-editor" type="button" class="btn btn-ghost">Cancel</button>
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <button id="close-editor" type="button" class="btn btn-ghost rounded-full" title="Close without saving catalog changes">Cancel</button>
+            <button type="submit" class="btn btn-primary rounded-full" title="Save the catalog entry or selected changes">Save</button>
+          </div>
         </form>
       </dialog>
       <dialog id="inventory-handoff" class="surface-panel p-6 entry-dialog" aria-labelledby="handoff-title">
@@ -152,6 +155,7 @@ function setEditorForms() {
   const forms = [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
   by("catalog-editor-forms").replaceChildren(...forms.map(value => new Option(value, value)));
   catalogEditor.elements.form.disabled = !category;
+  catalogEditor.elements.form.placeholder = category ? "Choose or enter a form" : "Choose a category first";
 }
 
 catalogEditor.elements.category.onchange = () => {
@@ -173,7 +177,7 @@ function edit(ids = []) {
   form.elements.name.value = item?.name ?? "";
   const original = editorCategory(item);
   const categories = [...new Set(items.map(editorCategory).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  form.elements.category.replaceChildren(new Option(bulk ? "Keep existing" : "Choose category first", ""), ...categories.map(value => new Option(value, value)));
+  form.elements.category.replaceChildren(new Option(bulk ? "Keep existing" : "Choose a category", ""), ...categories.map(value => new Option(value, value)));
   form.elements.category.required = !bulk;
   form.elements.category.value = original;
   setEditorForms();

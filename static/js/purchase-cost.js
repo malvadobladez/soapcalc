@@ -9,6 +9,14 @@ function lookupUnit(value) {
   return Object.hasOwn(purchaseUnits, key) ? purchaseUnits[key] : null;
 }
 
+export function normalizedStockQuantity(quantity, unit) {
+  if (quantity == null || quantity === "" || !Number.isFinite(Number(quantity))) return null;
+  const measurement = lookupUnit(unit);
+  return measurement
+    ? { amount: Number(quantity) * measurement[0], group: measurement[1] }
+    : { amount: Number(quantity), group: "other:" + String(unit ?? "").trim().toLowerCase() };
+}
+
 function roundCost(value) {
   // Match Python ties-to-even for exactly representable six-decimal half steps.
   const binarySteps = value * 128;

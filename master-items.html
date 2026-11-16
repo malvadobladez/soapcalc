@@ -108,6 +108,7 @@
         <div id="catalog-admin" class="catalog-admin-actions" hidden>
           <button id="bulk-edit" title="Enter or exit bulk editing" type="button" class="btn btn-secondary rounded-full">Bulk Edit</button>
           <button id="new-item" title="Create a shared catalog entry" type="button" class="btn btn-primary rounded-full">Add to the Catalog</button>
+          <button id="gpt-check" type="button" class="btn btn-ghost rounded-full">Test GPT connection</button>
           <button id="edit-selected" title="Edit the selected catalog entries" type="button" class="btn btn-primary rounded-full" hidden>Edit selected</button>
         </div>
       </div>
@@ -550,6 +551,23 @@ handoffForm.onsubmit = async event => {
   } finally {
     handoffSaving = submit.disabled = false;
   }
+};
+
+by("gpt-check").onclick = async () => {
+  const button = by("gpt-check");
+  button.disabled = true;
+  tell("Checking GPT connection…");
+  try {
+    const { data, error } = await db.functions.invoke("gpt-connection", { method: "POST", body: {} });
+    if (error) {
+      const failure = await error.context?.json?.().catch(() => null);
+      if (failure?.error === "openai_not_configured") tell("Set OPENAI_API_KEY in Supabase Edge Function secrets.");
+      else if (failure?.upstream_status) tell("OpenAI rejected the test request (HTTP " + failure.upstream_status + ").");
+      else tell("GPT connection check failed. Confirm you are signed in as a verified catalog admin.");
+    } else tell(data?.connected === true ? "GPT connection verified." : "GPT did not return a successful response.");
+  } catch {
+    tell("Could not reach the GPT connection check.");
+  } finally { button.disabled = false; }
 };
 
 function show(session) {

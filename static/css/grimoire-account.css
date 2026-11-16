@@ -9,3 +9,22 @@
 .grimoire-login label { display:grid; gap:.3rem; flex:1 1 12rem; }
 .grimoire-login input { width:100%; }
 .grimoire-login .grimoire-account-pill { height:auto; min-height:2.5rem; }
+
+/* Navigation links use the same pill treatment as account actions. */
+.grimoire-nav.grimoire-nav a {
+  display:inline-flex;
+  align-items:center;
+  min-height:2.5rem;
+  padding:.5rem .9rem;
+  border:1px solid var(--color-base-300);
+  border-radius:999px;
+  background:var(--color-base-200);
+  text-decoration:none;
+}
+.grimoire-nav.grimoire-nav a:hover,
+.grimoire-nav.grimoire-nav a:focus-visible { border-color:var(--color-primary); }
+.grimoire-nav.grimoire-nav a[aria-current="page"] {
+  background:var(--color-primary);
+  border-color:var(--color-primary);
+  color:var(--color-primary-content);
+}

@@ -26,8 +26,8 @@
     </form>
     <p id="message" class="mt-4" role="status"></p>
   </main>
-  <script type="module">
-    import { bindSignup } from "/static/js/grimoire-account.js?v=signup-popup-1";
+  <script data-cfasync="false" type="module">
+    import { bindSignup } from "/static/js/grimoire-account.js?v=signup-popup-2";
     bindSignup(document.querySelector("form"), document.getElementById("message"));
   </script>
 </body>

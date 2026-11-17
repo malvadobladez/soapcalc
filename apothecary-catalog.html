@@ -447,7 +447,7 @@ function render() {
       refresh.title = "Preview AI suggestions for this ingredient";
       refresh.disabled = [item.category, item.item_class].some(value => /^(colorants|packaging)$/i.test(value?.trim() ?? ""));
       if (refresh.disabled) refresh.title = "General AI refresh excludes colorants and packaging";
-      refresh.onclick = () => openPreview({ type:"metadata", id:Number(item.id) }, item.name);
+      refresh.onclick = () => openPreview({ type:"metadata", id:Number(item.id), force:true }, item.name);
       const remove = element("button", "Delete");
       remove.type = "button";
       remove.className = "btn btn-ghost text-error";

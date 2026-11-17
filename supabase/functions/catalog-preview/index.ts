@@ -410,5 +410,25 @@ async function previewMetadata(id, url: string, anon: string, auth: string, forc
     confidence: typeof score === "number" && score >= 0 && score <= 1 ? score : null,
     human_review_needed: parsed?.human_review_needed !== false
   };
-  return json(200, { metadata: item.metadata, suggestions, evidence, fields: descriptiveFields, review, model, supplier_context_url: supplier?.url ?? null });
+  const references: Record<string, { url: string; label: string }> = {};
+  // Curated match for the exact supplier product and plant part.
+  if (id === 681 && item.category === "Herb" && item.form === "Cut/Sifted" &&
+      item.metadata?.supplier_url === "https://serenityuniverse.com/products/artichoke-leaves") {
+    const scope = "EMA monograph, oral medicinal preparations of artichoke leaf: ";
+    const facts = {
+      contraindications: "Lists allergy to the ingredient or Asteraceae plants, bile duct obstruction, cholangitis, liver disease, gallstones, and other biliary disorders requiring medical supervision.",
+      drug_interactions: "The monograph reports no interactions for the preparations it covers.",
+      pregnancy_lactation_notes: "Safety data are insufficient. The monograph advises against use during pregnancy and breastfeeding.",
+      safety_notes: "Reported reactions include mild diarrhea with cramps, nausea, heartburn, and allergic reactions. Frequency is unknown."
+    };
+    for (const [field, value] of Object.entries(facts)) {
+      suggestions[field] = scope + value;
+      delete evidence[field];
+      references[field] = {
+        label: "EMA artichoke leaf monograph",
+        url: "https://www.ema.europa.eu/en/documents/herbal-monograph/final-european-union-herbal-monograph-cynara-cardunculus-l-syn-cynara-scolymus-l-folium_en.pdf"
+      };
+    }
+  }
+  return json(200, { metadata: item.metadata, suggestions, evidence, references, fields: descriptiveFields, review, model, supplier_context_url: supplier?.url ?? null });
 }

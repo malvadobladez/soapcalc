@@ -44,7 +44,7 @@ export async function viewItem(item, panel) {
     if (group.childElementCount) column.append(group);
   }
   block(left, [
-    ["Common names", d.common_names], ["Scientific name", d.scientific_name], ["Good for", d.therapeutic_tags],
+    ["Common names", d.common_names], ["Scientific name", d.scientific_name], ["Part used", d.part_used], ["Good for", d.therapeutic_tags],
     ["Taste profile", d.taste_profile], ["Caffeine level", d.caffeine_level], ["Skin feel", d.skin_feel],
     ["Allergen flags", d.allergen_flags], ["Drug interactions", d.drug_interactions],
     ["Use flags", join(label("Skin-safe", d.skin_safe), label("Lip-safe", d.lip_safe), label("Food grade", d.food_grade))]
@@ -78,12 +78,14 @@ export async function viewItem(item, panel) {
   };
   let productUrl;
   try {
-    const url = new URL(d.supplier_url);
+    const url = new URL(metadata?.supplier_url ?? d.supplier_url);
     if (url.protocol === "https:" && !url.username && !url.password) productUrl = url;
   } catch {}
   const supplierHost = productUrl?.hostname.replace(/^www\./, "");
   const sourceHost = Object.keys(suppliers).find(host => host.split(".")[0] === String(d.source ?? "").toLowerCase());
   const host = Object.hasOwn(suppliers, supplierHost) ? supplierHost : sourceHost;
+  const supplierLinks = document.createElement("div");
+  supplierLinks.className = "compact-footer";
   function supplierLink(label, href, name) {
     const line = element("span", "");
     const link = element("a", name);
@@ -92,10 +94,11 @@ export async function viewItem(item, panel) {
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     line.append(element("strong", label + ": "), link);
-    footer.append(line);
+    supplierLinks.append(line);
   }
   if (host) supplierLink("Supplier", "https://" + host, suppliers[host]);
-  if (productUrl) supplierLink("Product", productUrl.href, "View original supplier listing");
+  if (productUrl) supplierLink("Vendor product", productUrl.href, "View original supplier listing");
+  if (supplierLinks.childElementCount) panel.append(supplierLinks);
   if (grid.childElementCount) panel.append(grid);
   if (footer.childElementCount) panel.append(footer);
 }

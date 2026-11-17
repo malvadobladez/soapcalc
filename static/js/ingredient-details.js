@@ -91,13 +91,14 @@ export async function viewItem(item, panel) {
     const link = element("a", name);
     link.href = href;
     link.className = "underline";
+    link.style.overflowWrap = "anywhere";
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     line.append(element("strong", label + ": "), link);
     supplierLinks.append(line);
   }
   if (host) supplierLink("Supplier", "https://" + host, suppliers[host]);
-  if (productUrl) supplierLink("Vendor product", productUrl.href, "View original supplier listing");
+  if (productUrl) supplierLink("Vendor URL", productUrl.href, productUrl.href);
   if (supplierLinks.childElementCount) panel.append(supplierLinks);
   if (grid.childElementCount) panel.append(grid);
   if (footer.childElementCount) panel.append(footer);

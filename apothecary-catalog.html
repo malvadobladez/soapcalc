@@ -448,7 +448,31 @@ function render() {
       refresh.disabled = [item.category, item.item_class].some(value => /^(colorants|packaging)$/i.test(value?.trim() ?? ""));
       if (refresh.disabled) refresh.title = "General AI refresh excludes colorants and packaging";
       refresh.onclick = () => openPreview({ type:"metadata", id:Number(item.id) }, item.name);
-      actions.append(modify, refresh);
+      const remove = element("button", "Delete");
+      remove.type = "button";
+      remove.className = "btn btn-ghost text-error";
+      remove.title = "Permanently delete this catalog ingredient";
+      remove.onclick = async () => {
+        if (!admin || remove.disabled || !window.confirm("Permanently delete " + item.name + " from the catalog?")) return;
+        remove.disabled = true;
+        try {
+          const { data, error } = await db.from("master_items").delete().eq("id", item.id).select("id");
+          if (error?.code === "23503") {
+            tell("This ingredient is in use and cannot be deleted. Set it to Inactive instead.");
+            return;
+          }
+          if (error || data?.length !== 1) {
+            tell("Could not delete this ingredient. Check your admin access and refresh the catalog.");
+            return;
+          }
+          selected.delete(item.id);
+          await catalog();
+          tell(item.name + " deleted from the catalog.");
+        } finally {
+          remove.disabled = false;
+        }
+      };
+      actions.append(modify, refresh, remove);
     }
     row.append(actions);
     by("catalog").append(row, detailRow);

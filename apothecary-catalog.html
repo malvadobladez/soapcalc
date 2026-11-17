@@ -722,7 +722,7 @@ async function openPreview(payload, title, supplier, inBatch = false) {
         const suggested = data.suggestions?.[field];
         const evidence = data.evidence?.[field];
         if (!suggested && !current && fieldsNeedingEvidence.has(field)) missingEvidence.push(label);
-        if (suggested && suggested !== current) {
+        if (suggested && JSON.stringify(suggested) !== JSON.stringify(current)) {
           const reference = data.references?.[field];
           const basis = reference ? reference.label : evidence ? "Supplier excerpt: " + evidence : "AI suggestion";
           add(label + " · Suggested: " + suggested, [field,suggested], null, "Current: " + (current ?? "—") + " · " + basis, reference);

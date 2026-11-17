@@ -673,7 +673,7 @@ async function openPreview(payload, title, supplier, inBatch = false) {
     if (error) throw error;
     const choices = [];
     let conflicts = 0;
-    const add = (text, value, originalTitle, currentValue) => {
+    const add = (text, value, originalTitle, currentValue, reference) => {
       const input = document.createElement("input");
       input.type = "checkbox";
       input.className = "checkbox checkbox-sm";
@@ -694,17 +694,17 @@ async function openPreview(payload, title, supplier, inBatch = false) {
       const row = element("div", "");
       row.className = "ops-choice";
       row.append(label);
-      const supplierUrl = value?.metadata?.supplier_url;
+      const supplierUrl = reference?.url ?? value?.metadata?.supplier_url;
       if (supplierUrl) {
         try {
           const url = new URL(supplierUrl);
           if (url.protocol === "https:" && !url.username && !url.password) {
-            const link = element("a", "View supplier product");
+            const link = element("a", reference?.label ?? "View supplier product");
             link.href = url.href;
             link.target = "_blank";
             link.rel = "noopener noreferrer";
             link.className = "underline text-sm";
-            link.setAttribute("aria-label", "View supplier product for " + value.name + " (opens in a new tab)");
+            if (!reference) link.setAttribute("aria-label", "View supplier product for " + value.name + " (opens in a new tab)");
             row.append(link);
           }
         } catch {
@@ -723,8 +723,9 @@ async function openPreview(payload, title, supplier, inBatch = false) {
         const evidence = data.evidence?.[field];
         if (!suggested && !current && fieldsNeedingEvidence.has(field)) missingEvidence.push(label);
         if (suggested && suggested !== current) {
-          const basis = evidence ? "Supplier excerpt: " + evidence : "AI suggestion";
-          add(label + " · Suggested: " + suggested, [field,suggested], null, "Current: " + (current ?? "—") + " · " + basis);
+          const reference = data.references?.[field];
+          const basis = reference ? reference.label : evidence ? "Supplier excerpt: " + evidence : "AI suggestion";
+          add(label + " · Suggested: " + suggested, [field,suggested], null, "Current: " + (current ?? "—") + " · " + basis, reference);
         }
       }
       if (missingEvidence.length) {
@@ -845,7 +846,12 @@ async function openPreview(payload, title, supplier, inBatch = false) {
           return;
         } else {
           const timestamp = new Date().toISOString();
-          const metadata = { ...data.metadata, ...Object.fromEntries(selected), metadata_updated_at:timestamp,
+          const referenceSources = { ...data.metadata?.reference_sources };
+          for (const [field] of selected) {
+            if (data.references?.[field]) referenceSources[field] = data.references[field];
+            else delete referenceSources[field];
+          }
+          const metadata = { ...data.metadata, ...Object.fromEntries(selected), reference_sources:referenceSources, metadata_updated_at:timestamp,
             ai_refresh:{ model:data.model, ...data.review, supplier_context_url:data.supplier_context_url ?? null, supplier_evidence:Object.fromEntries(selected.flatMap(([field]) => data.evidence?.[field] ? [[field,data.evidence[field]]] : [])), fields:selected.map(([field]) => field), applied_at:timestamp } };
           query = db.from("master_items").update({ metadata }).eq("id",payload.id);
           query = data.metadata == null ? query.is("metadata",null) : query.eq("metadata",JSON.stringify(data.metadata));

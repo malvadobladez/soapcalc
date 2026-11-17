@@ -747,6 +747,26 @@ async function openPreview(payload, title, supplier, inBatch = false) {
       review.className = "text-sm mt-2";
       opsChoices.prepend(review);
     }
+    if (!supplier && choices.length > 1) {
+      const selectAll = document.createElement("input");
+      selectAll.type = "checkbox";
+      selectAll.className = "checkbox checkbox-sm";
+      const label = element("label", "");
+      label.className = "flex items-center gap-2 mt-3 mb-2";
+      label.append(selectAll, document.createTextNode("Select all"));
+      const updateSelection = () => {
+        const count = choices.filter(({ input }) => input.checked).length;
+        selectAll.checked = count === choices.length;
+        selectAll.indeterminate = count > 0 && count < choices.length;
+      };
+      selectAll.onchange = () => {
+        for (const { input } of choices) input.checked = selectAll.checked;
+        updateSelection();
+      };
+      for (const { input } of choices) input.addEventListener("change", updateSelection);
+      const firstChoice = opsChoices.querySelector(".ops-choice");
+      opsChoices.insertBefore(label, firstChoice);
+    }
     opsApply.hidden = !choices.length;
     opsApply.onclick = async () => {
       if (!active() || opsApply.disabled) return;

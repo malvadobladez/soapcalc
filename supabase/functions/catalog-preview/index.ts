@@ -415,10 +415,10 @@ async function previewMetadata(id, url: string, anon: string, auth: string, forc
   if (id === 681 && item.category === "Herb" && item.form === "Cut/Sifted" &&
       item.metadata?.supplier_url === "https://serenityuniverse.com/products/artichoke-leaves") {
     const facts = {
-      "contraindications": "EMA oral preparations: avoid with Asteraceae allergy, bile duct obstruction, cholangitis, liver disease, gallstones, or other biliary disorders requiring medical supervision.",
+      "contraindications": "Avoid with artichoke or Asteraceae allergy, bile duct blockage, cholangitis, liver disease, gallstones, or other biliary disorders needing medical supervision.",
       "drug_interactions": "None reported",
       "pregnancy_lactation_notes": "Avoid during pregnancy and breastfeeding",
-      "safety_notes": "EMA oral preparations: diarrhea with cramps, nausea, heartburn, and allergic reactions reported. Frequency unknown.",
+      "safety_notes": "Diarrhea with cramps, nausea, heartburn, or allergic reactions. Frequency unknown.",
       "traditional_use": "Traditional relief of fullness, bloating and flatulence in oral artichoke-leaf medicinal preparations.",
       "therapeutic_tags": [
         "digestion"

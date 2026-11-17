@@ -715,10 +715,22 @@ async function openPreview(payload, title, supplier, inBatch = false) {
       choices.push({ input, value });
     };
     if (!supplier) {
+      const fieldsNeedingEvidence = new Set(["part_used","supplier_origin","safety_notes","contraindications","pregnancy_lactation_notes","drug_interactions","allergen_flags","regulatory_notes"]);
+      const missingEvidence = [];
       for (const [field,label] of Object.entries(data.fields ?? { common_names:"Common names", usage_context:"Usage context" })) {
         const current = data.metadata?.[field];
         const suggested = data.suggestions?.[field];
-        if (suggested && suggested !== current) add(label + " · Suggested: " + suggested, [field,suggested], null, "Current: " + (current ?? "—"));
+        const evidence = data.evidence?.[field];
+        if (!suggested && !current && fieldsNeedingEvidence.has(field)) missingEvidence.push(label);
+        if (suggested && suggested !== current) {
+          const basis = evidence ? "Supplier excerpt: " + evidence : "AI suggestion";
+          add(label + " · Suggested: " + suggested, [field,suggested], null, "Current: " + (current ?? "—") + " · " + basis);
+        }
+      }
+      if (missingEvidence.length) {
+        const note = element("p", "Needs supplier evidence: " + missingEvidence.join(", "));
+        note.className = "text-sm mt-2";
+        opsChoices.prepend(note);
       }
     } else {
       const nameKey = name => name.trim().replace(/\s+/g, " ").toLowerCase();
@@ -796,7 +808,7 @@ async function openPreview(payload, title, supplier, inBatch = false) {
         } else {
           const timestamp = new Date().toISOString();
           const metadata = { ...data.metadata, ...Object.fromEntries(selected), metadata_updated_at:timestamp,
-            ai_refresh:{ model:data.model, ...data.review, supplier_context_url:data.supplier_context_url ?? null, fields:selected.map(([field]) => field), applied_at:timestamp } };
+            ai_refresh:{ model:data.model, ...data.review, supplier_context_url:data.supplier_context_url ?? null, supplier_evidence:Object.fromEntries(selected.flatMap(([field]) => data.evidence?.[field] ? [[field,data.evidence[field]]] : [])), fields:selected.map(([field]) => field), applied_at:timestamp } };
           query = db.from("master_items").update({ metadata }).eq("id",payload.id);
           query = data.metadata == null ? query.is("metadata",null) : query.eq("metadata",JSON.stringify(data.metadata));
         }

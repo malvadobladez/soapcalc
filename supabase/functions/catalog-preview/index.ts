@@ -410,14 +410,14 @@ async function previewMetadata(id, url: string, anon: string, auth: string, forc
     confidence: typeof score === "number" && score >= 0 && score <= 1 ? score : null,
     human_review_needed: parsed?.human_review_needed !== false
   };
-  const references: Record<string, { url: string; label: string }> = {};
+  const references: Record<string, { url: string; label: string; scope?: string }> = {};
   // Curated match for the exact supplier product and plant part.
   if (id === 681 && item.category === "Herb" && item.form === "Cut/Sifted" &&
       item.metadata?.supplier_url === "https://serenityuniverse.com/products/artichoke-leaves") {
     const facts = {
       "contraindications": "EMA oral preparations: avoid with Asteraceae allergy, bile duct obstruction, cholangitis, liver disease, gallstones, or other biliary disorders requiring medical supervision.",
-      "drug_interactions": "None reported in the EMA monograph for oral artichoke-leaf medicinal preparations.",
-      "pregnancy_lactation_notes": "EMA oral preparations: avoid during pregnancy and breastfeeding. Safety data are insufficient.",
+      "drug_interactions": "None reported",
+      "pregnancy_lactation_notes": "Avoid during pregnancy and breastfeeding",
       "safety_notes": "EMA oral preparations: diarrhea with cramps, nausea, heartburn, and allergic reactions reported. Frequency unknown.",
       "traditional_use": "Traditional relief of fullness, bloating and flatulence in oral artichoke-leaf medicinal preparations.",
       "therapeutic_tags": [
@@ -429,9 +429,11 @@ async function previewMetadata(id, url: string, anon: string, auth: string, forc
       delete evidence[field];
       references[field] = {
         label: "EMA artichoke leaf monograph",
+        scope: "Oral medicinal preparations of artichoke leaf",
         url: "https://www.ema.europa.eu/en/documents/herbal-monograph/final-european-union-herbal-monograph-cynara-cardunculus-l-syn-cynara-scolymus-l-folium_en.pdf"
       };
     }
   }
+  if (references.therapeutic_tags) delete suggestions.usage_context;
   return json(200, { metadata: item.metadata, suggestions, evidence, references, fields: { ...descriptiveFields, ...(references.therapeutic_tags ? { therapeutic_tags: "Good for" } : {}) }, review, model, supplier_context_url: supplier?.url ?? null });
 }

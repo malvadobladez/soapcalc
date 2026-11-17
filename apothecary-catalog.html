@@ -9,8 +9,9 @@
   <link rel="stylesheet" href="/static/css/grimoire-account.css?v=workspace-shell">
 <link rel="stylesheet" href="/static/css/apothecary-table.css?v=shared-toolbar">
 <style>
-    #ops-choices > label { display:flex; gap:.65rem; align-items:flex-start; padding:.55rem 0; }
-    #ops-choices > label + label { border-top:1px solid var(--color-base-300); }
+    #ops-choices > .ops-choice { padding:.55rem 0; }
+    #ops-choices > .ops-choice + .ops-choice { border-top:1px solid var(--color-base-300); }
+    .ops-choice > a { display:block; margin-left:2rem; }
     #ops-choices small { display:block; margin-top:.2rem; }
     body.catalog-management .workspace-main > .surface-panel { background-color:#eee8f1; border-color:#c9b7d1; }
     body.catalog-management .section-kicker { color:#704d7d; }
@@ -666,7 +667,27 @@ async function openPreview(payload, title, supplier, inBatch = false) {
         copy.append(detail);
       }
       label.append(input, copy);
-      opsChoices.append(label);
+      const row = element("div", "");
+      row.className = "ops-choice";
+      row.append(label);
+      const supplierUrl = value?.metadata?.supplier_url;
+      if (supplierUrl) {
+        try {
+          const url = new URL(supplierUrl);
+          if (url.protocol === "https:" && !url.username && !url.password) {
+            const link = element("a", "View supplier product");
+            link.href = url.href;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.className = "underline text-sm";
+            link.setAttribute("aria-label", "View supplier product for " + value.name + " (opens in a new tab)");
+            row.append(link);
+          }
+        } catch {
+          // A malformed supplier URL should not prevent reviewing the product.
+        }
+      }
+      opsChoices.append(row);
       choices.push({ input, value });
     };
     if (!supplier) {

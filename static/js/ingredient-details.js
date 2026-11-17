@@ -10,6 +10,13 @@ export async function viewItem(item, panel) {
   panel.replaceChildren();
   const { metadata, ...core } = data;
   const d = { ...metadata, ...core };
+  const conciseSafety = {
+    drug_interactions: ["None reported in the EMA monograph for oral artichoke-leaf medicinal preparations.", "None reported"],
+    pregnancy_lactation_notes: ["EMA oral preparations: avoid during pregnancy and breastfeeding. Safety data are insufficient.", "Avoid during pregnancy and breastfeeding"]
+  };
+  for (const [field, [stored, display]] of Object.entries(conciseSafety)) {
+    if (d[field] === stored) d[field] = display;
+  }
   const format = value => {
     if (value == null || (typeof value === "string" && !value.trim())) return "";
     if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -27,6 +34,17 @@ export async function viewItem(item, panel) {
       if (formatted === "") continue;
       const line = document.createElement(tag);
       line.append(element("strong", name + ": "), document.createTextNode(formatted));
+      const sourceField = { "Drug interactions": "drug_interactions", "Pregnancy/lactation": "pregnancy_lactation_notes" }[name];
+      const source = sourceField && metadata?.reference_sources?.[sourceField];
+      if (typeof source?.url === "string" && source.url.startsWith("https://www.ema.europa.eu/")) {
+        const link = element("a", "Reference");
+        link.href = source.url;
+        link.className = "underline text-sm";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.title = String(metadata[sourceField] ?? "");
+        line.append(document.createTextNode(" · "), link);
+      }
       parent.append(line);
     }
   };

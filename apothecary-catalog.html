@@ -489,7 +489,7 @@ async function catalog() {
   tell("Loading the Apothecary Catalog…");
   try {
     const [catalogRows, inventoryRows] = await Promise.all([
-      readPages("master_items", "id,name,category,form,item_class,is_active,density_g_per_ml", "id"),
+      readPages("master_items", "id,name,category,form,item_class,is_active,density_g_per_ml" + (admin ? ",metadata" : ""), "id"),
       readPages("inventory_items", "master_item_id,is_active", "master_item_id")
     ]);
     if (request !== revision || by("workspace").hidden) return;
@@ -739,7 +739,24 @@ async function openPreview(payload, title, supplier, inBatch = false) {
         if (product.conflict) { conflicts++; continue; }
         const key = nameKey(product.name);
         const rawKey = nameKey(product.raw_name ?? product.name);
-        if (known.has(key) || known.has(rawKey)) continue;
+        if (known.has(key) || known.has(rawKey)) {
+          const matches = items.filter(item => [key, rawKey].includes(nameKey(item.name)));
+          const existing = matches.length === 1 ? matches[0] : null;
+          const category = product.category ?? supplier.category;
+          const form = product.form ?? supplier.form;
+          if (existing && existing.category === category && existing.form === form &&
+              !existing.metadata?.supplier_url?.trim() && !choices.some(choice => choice.value.existingId === existing.id)) {
+            const url = new URL(product.url);
+            const source = url.hostname.replace(/^www\./, "").split(".")[0];
+            if (String(existing.metadata?.source ?? "").toLowerCase() === source) {
+              add(existing.name + " · Fill missing vendor URL", {
+                existingId:existing.id, name:existing.name, previousMetadata:existing.metadata,
+                metadata:{ ...existing.metadata, supplier_url:product.url }
+              });
+            }
+          }
+          continue;
+        }
         known.add(key);
         known.add(rawKey);
         const category = product.category ?? supplier.category;
@@ -804,7 +821,28 @@ async function openPreview(payload, title, supplier, inBatch = false) {
       try {
         let query;
         if (supplier) {
-          query = db.from("master_items").insert(selected);
+          const additions = selected.filter(entry => !entry.existingId);
+          let savedCount = 0;
+          for (const entry of selected.filter(entry => entry.existingId)) {
+            const { data:saved, error } = await db.from("master_items").update({ metadata:entry.metadata })
+              .eq("id", entry.existingId).eq("metadata", JSON.stringify(entry.previousMetadata)).select("id");
+            if (error || saved?.length !== 1) {
+              opsStatus.textContent = "Saved " + savedCount + " changes before a conflict. Reload the catalog and reopen the preview.";
+              return;
+            }
+            savedCount++;
+          }
+          if (additions.length) {
+            const { data:saved, error } = await db.from("master_items").insert(additions).select("id");
+            if (error || saved?.length !== additions.length) {
+              opsStatus.textContent = "Saved " + savedCount + " vendor links. New products could not be added. Reload and reopen the preview.";
+              return;
+            }
+          }
+          opsDialog.close();
+          await catalog();
+          tell("Selected supplier products and vendor links saved.");
+          return;
         } else {
           const timestamp = new Date().toISOString();
           const metadata = { ...data.metadata, ...Object.fromEntries(selected), metadata_updated_at:timestamp,

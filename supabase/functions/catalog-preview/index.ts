@@ -419,10 +419,11 @@ async function previewMetadata(id, url: string, anon: string, auth: string, forc
       contraindications: "Lists allergy to the ingredient or Asteraceae plants, bile duct obstruction, cholangitis, liver disease, gallstones, and other biliary disorders requiring medical supervision.",
       drug_interactions: "The monograph reports no interactions for the preparations it covers.",
       pregnancy_lactation_notes: "Safety data are insufficient. The monograph advises against use during pregnancy and breastfeeding.",
+      therapeutic_tags: ["digestion"],
       safety_notes: "Reported reactions include mild diarrhea with cramps, nausea, heartburn, and allergic reactions. Frequency is unknown."
     };
     for (const [field, value] of Object.entries(facts)) {
-      suggestions[field] = scope + value;
+      suggestions[field] = typeof value === "string" ? scope + value : value;
       delete evidence[field];
       references[field] = {
         label: "EMA artichoke leaf monograph",
@@ -430,5 +431,5 @@ async function previewMetadata(id, url: string, anon: string, auth: string, forc
       };
     }
   }
-  return json(200, { metadata: item.metadata, suggestions, evidence, references, fields: descriptiveFields, review, model, supplier_context_url: supplier?.url ?? null });
+  return json(200, { metadata: item.metadata, suggestions, evidence, references, fields: { ...descriptiveFields, ...(references.therapeutic_tags ? { therapeutic_tags: "Good for" } : {}) }, review, model, supplier_context_url: supplier?.url ?? null });
 }

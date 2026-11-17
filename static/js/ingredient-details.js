@@ -42,6 +42,7 @@ export async function viewItem(item, panel) {
     group.className = "compact-block";
     append(group, "p", fields);
     if (group.childElementCount) column.append(group);
+    return group;
   }
   block(left, [
     ["Common names", d.common_names], ["Scientific name", d.scientific_name], ["Part used", d.part_used], ["Good for", d.therapeutic_tags],
@@ -50,13 +51,13 @@ export async function viewItem(item, panel) {
     ["Use flags", join(label("Skin-safe", d.skin_safe), label("Lip-safe", d.lip_safe), label("Food grade", d.food_grade))]
   ]);
   const density = join(label("source:", d.density_source), label("confidence:", d.density_confidence));
-  block(left, [
+  const usage = block(left, [
     ["SAP values", join(label("NaOH", d.sap_naoh), label("KOH", d.sap_koh))],
     ["SAP source", d.sap_source],
     ["Fatty acids %", acids.map(name => label(name, percent(d["fa_" + name.toLowerCase()]))).filter(Boolean).join(", ")],
     ["Iodine value", d.iodine_value], ["Usage range", [percent(d.usage_rate_min), percent(d.usage_rate_max)].filter(Boolean).join("–")],
     ["Density (g/mL)", format(d.density_g_per_ml) && format(d.density_g_per_ml) + (density ? " (" + density + ")" : "")],
-    ["Usage context", d.usage_context], ["Evidence tier", d.evidence_tier]
+    ["Usage context", d.usage_context]
   ]);
   block(right, [
     ["Traditional use", d.traditional_use], ["Safety notes", d.safety_notes], ["Contraindications", d.contraindications],
@@ -64,9 +65,6 @@ export async function viewItem(item, panel) {
     ["Confidence reason", d.confidence_reason], ["Notes", d.notes]
   ]);
   block(right, [["Colorant profile", d.colorant_profile], ["Colorant source", d.colorant_profile_source_url]]);
-  if (left.childElementCount) grid.append(left);
-  if (right.childElementCount) grid.append(right);
-  if (grid.childElementCount === 1) grid.style.gridTemplateColumns = "1fr";
   const footer = document.createElement("div");
   footer.className = "compact-footer";
   const date = value => value?.slice(0, 10);
@@ -84,10 +82,8 @@ export async function viewItem(item, panel) {
   const supplierHost = productUrl?.hostname.replace(/^www\./, "");
   const sourceHost = Object.keys(suppliers).find(host => host.split(".")[0] === String(d.source ?? "").toLowerCase());
   const host = Object.hasOwn(suppliers, supplierHost) ? supplierHost : sourceHost;
-  const supplierLinks = document.createElement("div");
-  supplierLinks.className = "compact-footer";
   function supplierLink(label, href, name) {
-    const line = element("span", "");
+    const line = element("p", "");
     const link = element("a", name);
     link.href = href;
     link.className = "underline";
@@ -95,11 +91,15 @@ export async function viewItem(item, panel) {
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     line.append(element("strong", label + ": "), link);
-    supplierLinks.append(line);
+    usage.append(line);
   }
   if (host) supplierLink("Supplier", "https://" + host, suppliers[host]);
   if (productUrl) supplierLink("Vendor URL", productUrl.href, productUrl.href);
-  if (supplierLinks.childElementCount) panel.append(supplierLinks);
+  append(usage, "p", [["Evidence tier", d.evidence_tier]]);
+  if (usage.childElementCount && !usage.parentNode) left.append(usage);
+  if (left.childElementCount) grid.append(left);
+  if (right.childElementCount) grid.append(right);
+  if (grid.childElementCount === 1) grid.style.gridTemplateColumns = "1fr";
   if (grid.childElementCount) panel.append(grid);
   if (footer.childElementCount) panel.append(footer);
 }

@@ -33,6 +33,9 @@ export async function viewItem(item, panel) {
       const formatted = format(value);
       if (formatted === "") continue;
       const line = document.createElement(tag);
+      if (name === "Allergen flags" && !/^(?:none(?: reported| known)?|unknown|n\/a|no)$/i.test(formatted.trim())) {
+        line.classList.add("text-danger-inline");
+      }
       line.append(element("strong", name + ": "), document.createTextNode(formatted));
       const sourceField = { "Drug interactions": "drug_interactions", "Pregnancy/lactation": "pregnancy_lactation_notes" }[name];
       const source = sourceField && metadata?.reference_sources?.[sourceField];

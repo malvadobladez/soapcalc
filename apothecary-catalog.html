@@ -70,6 +70,7 @@
     <div id="workspace" hidden>
       <div class="catalog-toolbar">
         <input id="search" type="search" class="input input-bordered bg-base-100" aria-label="Search the catalog" placeholder="Search the catalog…">
+        <select id="good-for" class="select select-bordered bg-base-100" aria-label="Good for"><option value="">All Good For</option></select>
         <select id="category" class="select select-bordered bg-base-100" aria-label="Category"></select>
         <select id="form" class="select select-bordered bg-base-100" aria-label="Form"></select>
         <label id="catalog-stock-filter" class="catalog-stock"><input id="stock-only" type="checkbox" class="checkbox checkbox-sm"> In My Apothecary only</label>
@@ -324,6 +325,25 @@ function choices(select, values, label) {
   if (list.includes(selected)) select.value = selected;
 }
 
+// Brenda's internal and topical herbal vocabularies. Master items can serve both.
+const goodForTags = new Set(["sleep", "digestion", "stress", "anxiety", "headache",
+  "pain", "inflammation", "immune", "respiratory", "circulation", "energy", "detox",
+  "women", "men", "skin"]);
+const goodForAliases = new Map([
+  ["calm", "stress"], ["calming", "stress"], ["relaxation", "stress"], ["relax", "stress"],
+  ["sleep support", "sleep"], ["sleeping", "sleep"], ["digestive", "digestion"],
+  ["gut", "digestion"], ["immune support", "immune"], ["breathing", "respiratory"],
+  ["respiration", "respiratory"],
+]);
+
+function normalizeGoodForTags(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter(tag => typeof tag === "string").map(tag => {
+    const key = tag.trim().toLowerCase();
+    return goodForAliases.get(key) ?? key;
+  }).filter(tag => goodForTags.has(tag)))];
+}
+
 function render() {
   by("bulk-edit").textContent = bulkMode ? "Cancel Bulk Edit" : "Bulk Edit";
   by("edit-selected").hidden = !bulkMode;
@@ -334,7 +354,11 @@ function render() {
   const categoryItems = items.filter(item => !category.value || item.category === category.value);
   choices(form, category.value ? categoryItems.map(item => item.form) : [], category.value ? "All forms" : "Choose category first");
   form.disabled = !category.value;
+  const goodFor = by("good-for");
+  const tagsFor = item => normalizeGoodForTags(item.metadata?.therapeutic_tags ?? item.therapeutic_tags);
+  choices(goodFor, categoryItems.filter(item => !form.value || item.form === form.value).flatMap(tagsFor), "All Good For");
   const visible = categoryItems.filter(item =>
+    (!goodFor.value || tagsFor(item).includes(goodFor.value)) &&
     (!form.value || item.form === form.value) &&
     (management || !by("stock-only").checked || owned.has(item.id)) &&
     [item.name, item.category, item.form].some(value => value?.toLowerCase().includes(term))
@@ -489,7 +513,7 @@ async function catalog() {
   tell("Loading the Apothecary Catalog…");
   try {
     const [catalogRows, inventoryRows] = await Promise.all([
-      readPages("master_items", "id,name,category,form,item_class,is_active,density_g_per_ml" + (admin ? ",metadata" : ""), "id"),
+      readPages("master_items", "id,name,category,form,item_class,is_active,density_g_per_ml" + (admin ? ",metadata" : ",therapeutic_tags:metadata->therapeutic_tags"), "id"),
       readPages("inventory_items", "master_item_id,is_active", "master_item_id")
     ]);
     if (request !== revision || by("workspace").hidden) return;
@@ -914,9 +938,9 @@ function show(session) {
 
 const filter = () => { page = 0; render(); };
 by("search").addEventListener("input", filter);
-for (const id of ["category", "form", "stock-only"]) by(id).addEventListener("change", filter);
+for (const id of ["category", "form", "good-for", "stock-only"]) by(id).addEventListener("change", filter);
 by("clear").onclick = () => {
-  for (const id of ["search", "category", "form"]) by(id).value = "";
+  for (const id of ["search", "category", "form", "good-for"]) by(id).value = "";
   by("stock-only").checked = false;
   filter();
 };

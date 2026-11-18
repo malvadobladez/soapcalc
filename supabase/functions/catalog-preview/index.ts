@@ -585,6 +585,12 @@ async function previewMetadata(id, url: string, anon: string, auth: string, forc
     }
     if (/scent|fragrance/i.test(item.category ?? "") && ["notes", "usage_context"].includes(field) && !supported) return [];
     if ((supplierRequired.has(field) || (field === "scientific_name" && item.category === "Herb")) && !supported) return [];
+    if (field === "drug_interactions" && /^(?:individual )?results may vary[.!]?$/i.test(value)) return [];
+    if (field === "scientific_name" && item.category === "Herb" && supplier) {
+      const botanical = supplier.description.match(/Botanical Name:\s*([A-Z][a-z]+\s+[a-z-]+)\b/i)?.[1];
+      const partSpecies = supplier.description.match(/Part Used:[^:]{0,120}?\bof\s+([A-Z][a-z]+\s+[a-z-]+)\b/)?.[1];
+      if (botanical && partSpecies && botanical.toLowerCase() !== partSpecies.toLowerCase()) return [];
+    }
     if (supplierRequired.has(field) && !["part_used", "supplier_origin"].includes(field) && value !== excerpt) return [];
     if (supported) evidence[field] = excerpt;
     return [[field, ["drug_interactions", "allergen_flags"].includes(field) ? [value] : value]];

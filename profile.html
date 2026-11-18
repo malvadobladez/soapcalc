@@ -22,6 +22,7 @@
       <label>Display name <input class="input input-bordered rounded-full" name="display_name" autocomplete="nickname" maxlength="100"></label>
       <label>Email <input class="input input-bordered rounded-full" name="login_email" type="email" readonly></label>
       <label>Phone <input class="input input-bordered rounded-full" name="contact_phone" type="tel" autocomplete="tel" maxlength="40"></label>
+      <label id="admin-metadata-preference" hidden><span>Admin display</span><span><input type="checkbox" class="checkbox checkbox-sm" name="show_all_metadata"> Show all metadata fields</span></label>
       <button type="submit" class="btn btn-primary rounded-full">Save profile</button>
     </form>
     <p id="sign-in" class="mt-4" hidden>Sign in to view your profile.</p>
@@ -31,11 +32,15 @@
     import { db, hasVulgarDisplayName } from "/static/js/grimoire-account.js?v=floating-chat-1";
     const message = document.getElementById("message");
     const form = document.querySelector("form");
+    let admin = false;
     function show(user) {
+      admin = user?.app_metadata?.catalog_admin === true;
+      document.getElementById("admin-metadata-preference").hidden = !admin;
       form.hidden = !user;
       document.getElementById("sign-in").hidden = Boolean(user);
       if (!user) { form.reset(); return; }
       const profile = user.user_metadata ?? {};
+      form.elements.show_all_metadata.checked = admin && profile.show_all_metadata === true;
       form.elements.login_email.value = user.email ?? "";
       form.elements.display_name.value = profile.display_name ?? profile.full_name ?? profile.name ?? "";
       form.elements.contact_phone.value = profile.contact_phone ?? "";
@@ -54,6 +59,7 @@
       button.disabled = true;
       try {
         const data = Object.fromEntries(["display_name", "contact_phone"].map(key => [key, fields.get(key).trim()]));
+        if (admin) data.show_all_metadata = form.elements.show_all_metadata.checked;
         const result = await db.auth.updateUser({ data });
         if (result.error) throw result.error;
         message.textContent = "Profile saved.";

@@ -83,7 +83,7 @@ export async function viewItem(item, panel) {
   block(right, [
     ["Traditional use", d.traditional_use], ["Safety notes", d.safety_notes], ["Contraindications", d.contraindications],
     ["Regulatory notes", d.regulatory_notes], ["Pregnancy/lactation", d.pregnancy_lactation_notes],
-    ["Confidence reason", d.confidence_reason], ["Notes", d.notes]
+    ["Notes", d.notes]
   ]);
   block(right, [["Colorant profile", d.colorant_profile], ["Colorant source", d.colorant_profile_source_url]]);
   const footer = document.createElement("div");

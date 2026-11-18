@@ -740,22 +740,22 @@ async function openPreview(payload, title, supplier, inBatch = false) {
     };
     if (!supplier) {
       const fieldsNeedingEvidence = new Set(["part_used","supplier_origin","safety_notes","contraindications","pregnancy_lactation_notes","drug_interactions","allergen_flags","regulatory_notes"]);
-      const missingEvidence = [];
       for (const [field,label] of Object.entries(data.fields ?? { common_names:"Common names", usage_context:"Usage context" })) {
         const current = data.metadata?.[field];
         const suggested = data.suggestions?.[field];
         const evidence = data.evidence?.[field];
-        if (suggested == null && current == null && fieldsNeedingEvidence.has(field)) missingEvidence.push(label);
         if (suggested != null && JSON.stringify(suggested) !== JSON.stringify(current)) {
           const reference = data.references?.[field];
           const basis = reference ? reference.label : evidence ? "Supplier excerpt: " + evidence : "AI suggestion";
           add(label + " · Suggested: " + suggested, [field,suggested], null, "Current: " + (current ?? "—") + " · " + basis, reference);
+        } else {
+          const currentText = Array.isArray(current) ? current.join(", ") : String(current ?? "");
+          const status = currentText.trim() ? "Current: " + currentText + " · No proposed change"
+            : fieldsNeedingEvidence.has(field) ? "No supported value found" : "No suggestion returned";
+          const row = element("p", label + " · " + status);
+          row.className = "ops-choice text-sm text-neutral/75";
+          opsChoices.append(row);
         }
-      }
-      if (missingEvidence.length) {
-        const note = element("p", "Needs supplier evidence: " + missingEvidence.join(", "));
-        note.className = "text-sm mt-2";
-        opsChoices.prepend(note);
       }
     } else {
       const nameKey = name => name.trim().replace(/\s+/g, " ").toLowerCase();

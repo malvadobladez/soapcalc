@@ -122,4 +122,25 @@ export async function viewItem(item, panel) {
   if (grid.childElementCount === 1) grid.style.gridTemplateColumns = "1fr";
   if (grid.childElementCount) panel.append(grid);
   if (footer.childElementCount) panel.append(footer);
+  const { data: account } = await db.auth.getUser();
+  if (!panel.isConnected || account.user?.app_metadata?.catalog_admin !== true ||
+      account.user?.user_metadata?.show_all_metadata !== true) return;
+  const allFields = document.createElement("details");
+  allFields.open = true;
+  allFields.append(element("summary", "All metadata fields"));
+  const table = document.createElement("table");
+  table.className = "table table-sm w-full";
+  for (const [key, value] of Object.entries(d).sort(([a], [b]) => a.localeCompare(b))) {
+    const row = document.createElement("tr");
+    const heading = element("th", key.replaceAll("_", " "));
+    heading.scope = "row";
+    const cell = element("td", value == null || value === "" ? "—" :
+      typeof value === "object" ? JSON.stringify(value, null, 2) : String(value));
+    cell.style.whiteSpace = "pre-wrap";
+    cell.style.overflowWrap = "anywhere";
+    row.append(heading, cell);
+    table.append(row);
+  }
+  allFields.append(table);
+  panel.append(allFields);
 }

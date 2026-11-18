@@ -545,13 +545,22 @@ async function previewMetadata(id, url: string, anon: string, auth: string, forc
   const gaps = referenceFields.filter(field => !suggestions[field] &&
     (item.metadata?.[field] == null || item.metadata[field] === "" ||
       (Array.isArray(item.metadata[field]) && item.metadata[field].length === 0)));
-  const canSearch = gaps.length &&
+  const lookupMetadata = { ...item.metadata };
+  let identityConflict = false;
+  for (const field of ["scientific_name", "part_used"]) {
+    const current = typeof lookupMetadata[field] === "string" ? lookupMetadata[field].trim() : "";
+    const proposed = suggestions[field];
+    if (!evidence[field] || typeof proposed !== "string") continue;
+    if (current && current.toLowerCase() !== proposed.toLowerCase()) identityConflict = true;
+    else if (!current) lookupMetadata[field] = proposed;
+  }
+  const canSearch = gaps.length && !identityConflict &&
     (!/^herbs?$/i.test(item.category ?? "") ||
-      (typeof item.metadata?.scientific_name === "string" && item.metadata.scientific_name.trim() &&
-        typeof item.metadata?.part_used === "string" && item.metadata.part_used.trim()));
+      (typeof lookupMetadata.scientific_name === "string" && lookupMetadata.scientific_name.trim() &&
+        typeof lookupMetadata.part_used === "string" && lookupMetadata.part_used.trim()));
   if (canSearch) {
     try {
-      for (const { field, url, excerpt, scope } of await findCatalogReferences(key, item, gaps)) {
+      for (const { field, url, excerpt, scope } of await findCatalogReferences(key, { ...item, metadata: lookupMetadata }, gaps)) {
         if (suggestions[field]) continue;
         suggestions[field] = excerpt;
         references[field] = { url, label: "Review reference · " + scope, scope };

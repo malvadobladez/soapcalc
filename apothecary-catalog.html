@@ -742,17 +742,23 @@ async function openPreview(payload, title, supplier, inBatch = false) {
       const fieldsNeedingEvidence = new Set(["part_used","supplier_origin","safety_notes","contraindications","pregnancy_lactation_notes","drug_interactions","allergen_flags","regulatory_notes"]);
       for (const [field,label] of Object.entries(data.fields ?? { common_names:"Common names", usage_context:"Usage context" })) {
         const current = data.metadata?.[field];
-        const suggested = data.suggestions?.[field];
+        const draft = data.guidelines?.[field];
+        const canApplyDraft = typeof draft === "string" && draft.trim() && !String(current ?? "").trim()
+          && ["safety_notes", "contraindications", "pregnancy_lactation_notes", "drug_interactions", "allergen_flags", "regulatory_notes"].includes(field);
+        const usingDraft = data.suggestions?.[field] == null && canApplyDraft;
+        const draftText = "AI guideline (unverified): " + draft;
+        const suggested = usingDraft
+          ? (["drug_interactions", "allergen_flags"].includes(field) ? [draftText] : draftText)
+          : data.suggestions?.[field];
         const evidence = data.evidence?.[field];
         if (suggested != null && JSON.stringify(suggested) !== JSON.stringify(current)) {
           const reference = data.references?.[field];
-          const basis = reference ? reference.label : evidence ? "Supplier excerpt: " + evidence : "AI suggestion";
+          const basis = usingDraft ? "AI guideline · review before applying" : reference ? reference.label : evidence ? "Supplier excerpt: " + evidence : "AI suggestion";
           add(label + " · Suggested: " + suggested, [field,suggested], null, "Current: " + (current ?? "—") + " · " + basis, reference);
         } else {
           const currentText = Array.isArray(current) ? current.join(", ") : String(current ?? "");
           const status = currentText.trim() ? "Current: " + currentText + " · No proposed change"
             : fieldsNeedingEvidence.has(field) ? "No supported value found" : "No suggestion returned";
-          const draft = data.guidelines?.[field];
           const row = element("p", label + " · " + status + (draft ? " · AI guideline for review: " + draft : ""));
           row.className = "ops-choice text-sm text-neutral/75";
           opsChoices.append(row);
@@ -877,7 +883,7 @@ async function openPreview(payload, title, supplier, inBatch = false) {
             else delete referenceSources[field];
           }
           const metadata = { ...data.metadata, ...Object.fromEntries(selected), reference_sources:referenceSources, metadata_updated_at:timestamp,
-            ai_refresh:{ model:data.model, ...data.review, supplier_context_url:data.supplier_context_url ?? null, supplier_evidence:Object.fromEntries(selected.flatMap(([field]) => data.evidence?.[field] ? [[field,data.evidence[field]]] : [])), fields:selected.map(([field]) => field), applied_at:timestamp } };
+            ai_refresh:{ model:data.model, ...data.review, supplier_context_url:data.supplier_context_url ?? null, supplier_evidence:Object.fromEntries(selected.flatMap(([field]) => data.evidence?.[field] ? [[field,data.evidence[field]]] : [])), fields:selected.map(([field]) => field), guideline_fields:selected.filter(([field]) => data.suggestions?.[field] == null && data.guidelines?.[field]).map(([field]) => field), applied_at:timestamp } };
           query = db.from("master_items").update({ metadata }).eq("id",payload.id);
           query = data.metadata == null ? query.is("metadata",null) : query.eq("metadata",JSON.stringify(data.metadata));
         }

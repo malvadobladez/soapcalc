@@ -752,7 +752,8 @@ async function openPreview(payload, title, supplier, inBatch = false) {
           const currentText = Array.isArray(current) ? current.join(", ") : String(current ?? "");
           const status = currentText.trim() ? "Current: " + currentText + " · No proposed change"
             : fieldsNeedingEvidence.has(field) ? "No supported value found" : "No suggestion returned";
-          const row = element("p", label + " · " + status);
+          const draft = data.guidelines?.[field];
+          const row = element("p", label + " · " + status + (draft ? " · AI guideline for review: " + draft : ""));
           row.className = "ops-choice text-sm text-neutral/75";
           opsChoices.append(row);
         }

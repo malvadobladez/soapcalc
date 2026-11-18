@@ -116,7 +116,6 @@ export async function viewItem(item, panel) {
   }
   if (host) supplierLink("Supplier", "https://" + host, suppliers[host]);
   if (productUrl) supplierLink("Vendor URL", productUrl.href, productUrl.href);
-  append(usage, "p", [["Evidence tier", d.evidence_tier]]);
   if (usage.childElementCount && !usage.parentNode) left.append(usage);
   if (left.childElementCount) grid.append(left);
   if (right.childElementCount) grid.append(right);
